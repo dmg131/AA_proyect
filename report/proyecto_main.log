@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.2) (preloaded format=pdflatex 2026.3.10)  28 APR 2026 09:55
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.2) (preloaded format=pdflatex 2026.3.10)  28 APR 2026 10:12
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -724,24 +724,24 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 \tf@toc=\write4
 \openout4 = `proyecto_main.toc'.
 
- [2] [3{C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathsy.enc}{C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathit.enc}{C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-rm.enc}]
+ [2] [3]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 190.
+(Font)              <10> on input line 196.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 190.
- [4]
-Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on input line 304.
- [5] [6]
-Underfull \hbox (badness 2856) in paragraph at lines 408--412
+(Font)              <7> on input line 196.
+ [4{C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathsy.enc}{C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathit.enc}{C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-rm.enc}] [5]
+Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on input line 310.
+ [6]
+Underfull \hbox (badness 2856) in paragraph at lines 414--418
 []\T1/lmr/m/n/10.95 (+20) D. Au-tor4, E. Au-tor5 y F. Au-tor6, ``Tí-tu-lo del ar-tícu-lo,'' \T1/lmr/m/it/10.95 (+20) ar-Xiv pre-print ar-
  []
 
 
-Overfull \hbox (59.86292pt too wide) in paragraph at lines 449--451
+Overfull \hbox (59.86292pt too wide) in paragraph at lines 455--457
 []\T1/lmr/m/n/10.95 (-20) El có-di-go fuen-te del tra-ba-jo es-tá dis-po-ni-ble en: [][]$\T1/lmtt/m/n/10.95 https : / / github . com / [usuario ] /[nombre-[]repositorio]$[][] 
  []
 
-[7] (proyecto_main.aux
+[7] [8] (proyecto_main.aux
 LaTeX Info: Redefining \. on input line 12.
 LaTeX Info: Redefining \% on input line 12.
 )
@@ -753,17 +753,17 @@ Package rerunfilecheck Info: File `proyecto_main.out' has not changed.
 (rerunfilecheck)             Checksum: EBC94394F73F47130A6115C43338AE9D;5271.
  ) 
 Here is how much of TeX's memory you used:
- 17898 strings out of 467867
- 284917 string characters out of 5417366
- 783202 words of memory out of 5000000
+ 17919 strings out of 467867
+ 285137 string characters out of 5417366
+ 782202 words of memory out of 5000000
  46298 multiletter control sequences out of 15000+600000
- 731813 words of font info for 192 fonts, out of 8000000 for 9000
+ 732737 words of font info for 202 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  76i,11n,79p,1087b,1294s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmib10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx12.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbxi10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi8.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr12.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr6.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr8.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmri10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy8.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt10.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt9.pfb><C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on proyecto_main.pdf (7 pages, 332846 bytes).
+Output written on proyecto_main.pdf (8 pages, 336475 bytes).
 PDF statistics:
- 318 PDF objects out of 1000 (max. 8388607)
- 53 named destinations out of 1000 (max. 500000)
+ 322 PDF objects out of 1000 (max. 8388607)
+ 54 named destinations out of 1000 (max. 500000)
  56545 words of extra memory for PDF output out of 61914 (max. 10000000)
 

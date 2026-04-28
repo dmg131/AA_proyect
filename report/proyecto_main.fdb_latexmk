@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1777362954.80692 "c:/Users/Usuario/Universidad/A3/cuatri_2/AA/proyecto_final/AA_proyect/report/proyecto_main.tex" "proyecto_main.pdf" "proyecto_main" 1777362955.60716 0
+["pdflatex"] 1777363930.64899 "c:/Users/Usuario/Universidad/A3/cuatri_2/AA/proyecto_final/AA_proyect/report/proyecto_main.tex" "proyecto_main.pdf" "proyecto_main" 1777363931.70558 0
   "C:/Users/Usuario/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1777362872 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
   "C:/Users/Usuario/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1773132996 13334817 8bb0e89d9abb1c7f5d10632a320fe9ec ""
   "C:/Users/Usuario/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc" 1256929440 2375 baa924870cfb487815765f9094cf3728 ""
@@ -175,11 +175,11 @@
   "C:/Users/Usuario/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1729265222 55384 b454dec21c2d9f45ec0b793f0995b992 ""
   "C:/Users/Usuario/AppData/Local/Programs/MiKTeX/tex/latex/zref/zref-abspage.sty" 1750428951 2269 2de6c7a5fd634dfef00a960544463a38 ""
   "C:/Users/Usuario/AppData/Local/Programs/MiKTeX/tex/latex/zref/zref-base.sty" 1750428951 20785 198a9cb2e04238d92c320d0d9edbd76a ""
-  "c:/Users/Usuario/Universidad/A3/cuatri_2/AA/proyecto_final/AA_proyect/report/proyecto_main.tex" 1777362952 16286 41ad1ff3ac4af2535a119385cb1a26f4 ""
-  "proyecto_main.aux" 1777362955 6224 be929e460d11d7807b29b1be8da8923c "pdflatex"
-  "proyecto_main.out" 1777362955 5271 ebc94394f73f47130a6115c43338ae9d "pdflatex"
-  "proyecto_main.tex" 1777362952 16286 41ad1ff3ac4af2535a119385cb1a26f4 ""
-  "proyecto_main.toc" 1777362955 2530 7d410093f045af07fbf7b2fe1418785e "pdflatex"
+  "c:/Users/Usuario/Universidad/A3/cuatri_2/AA/proyecto_final/AA_proyect/report/proyecto_main.tex" 1777363929 18660 b53fff886ec63b7dc2cc87656a2cdde4 ""
+  "proyecto_main.aux" 1777363931 6224 589cbdbb055793be9dd5eac6d1ad6543 "pdflatex"
+  "proyecto_main.out" 1777363931 5271 ebc94394f73f47130a6115c43338ae9d "pdflatex"
+  "proyecto_main.tex" 1777363929 18660 b53fff886ec63b7dc2cc87656a2cdde4 ""
+  "proyecto_main.toc" 1777363931 2530 9852c38b0836a9aa98b441760b778f70 "pdflatex"
   (generated)
   "proyecto_main.aux"
   "proyecto_main.log"

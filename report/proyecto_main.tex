@@ -125,7 +125,13 @@
 \textit{La introducción debe responder a cuatro preguntas: (1)~?`Cuál es el problema y por qué es relevante? (2)~?`Qué implicaciones éticas, sociales o legales tiene? (3)~?`Qué se propone hacer este trabajo? (4)~?`Cómo se organiza el resto del documento? No es un resumen del trabajo, sino una motivación y contextualización.}
 \end{orientacion}
 
-[Introducción aquí: 3--4 párrafos.]
+En los últimos años, el uso de modelos de aprendizaje automático en contextos de alto impacto social ha crecido de forma significativa, especialmente en áreas relacionadas con la toma de decisiones públicas. Uno de los ámbitos más sensibles es el sistema judicial, donde algoritmos de predicción se utilizan o se proponen como herramientas de apoyo para estimar la probabilidad de reincidencia de individuos dentro del sistema penal. Estos sistemas pueden influir en decisiones críticas como la concesión de libertad condicional, la asignación de recursos penitenciarios o la participación en programas de rehabilitación.
+
+Sin embargo, la aplicación de estos modelos en entornos judiciales plantea desafíos fundamentales tanto técnicos como éticos. En particular, los errores de predicción pueden tener consecuencias graves a nivel individual y social: un \textit{falso positivo} puede contribuir a decisiones injustamente restrictivas, mientras que un \textit{falso negativo} puede subestimar el riesgo real de reincidencia. Además, diversos estudios han evidenciado la presencia de sesgos en los datos utilizados para entrenar estos modelos, lo que puede derivar en resultados discriminatorios hacia ciertos grupos demográficos.
+
+En este contexto, el dataset \textit{COMPAS Recidivism} de ProPublica se ha convertido en un referente para el estudio de estas problemáticas, al poner en evidencia posibles desigualdades raciales en sistemas de predicción de riesgo. A partir de este caso, surge la necesidad de analizar no solo el rendimiento predictivo de los modelos, sino también su equidad (\textit{fairness}) y su capacidad de explicación (\textit{explainability}), aspectos clave para su posible aplicación en entornos reales.
+
+El presente proyecto tiene como objetivo desarrollar un modelo de aprendizaje automático para la predicción de reincidencia, acompañado de un análisis crítico de sus implicaciones éticas. En particular, se abordarán dos problemáticas principales: la detección y evaluación de sesgos en las predicciones mediante métricas de equidad, y la interpretabilidad del modelo mediante técnicas de explicabilidad (\textit{XAI}), como \textit{SHAP} (\textit{SHapley Additive exPlanations}). De este modo, se busca no solo optimizar el rendimiento del modelo, sino también evaluar su transparencia, justicia y viabilidad en contextos judiciales reales.
 
 El resto del artículo se organiza como sigue.
 La Sección~\ref{sec:related} revisa el trabajo relacionado.
