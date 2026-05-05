@@ -170,6 +170,7 @@ En este ámbito, el estado del arte distingue entre modelos \textbf{intrínsecam
 Dentro de los métodos \textit{post-hoc}, la técnica \textit{SHAP} (\textit{SHapley Additive exPlanations}) se ha consolidado como el estándar para cuantificar la contribución de cada variable. No obstante, una limitación significativa de su implementación original (\textit{Kernel SHAP}) es el supuesto de independencia entre las características. Como demuestran Aas et al. \cite{aas2021explaining}, en entornos judiciales donde las variables socioeconómicas y delictivas suelen presentar una alta correlación, ignorar estas dependencias puede derivar en explicaciones inexactas o sesgadas.
 
 Para abordar este desafío, la literatura reciente propone extensiones de \textit{SHAP} que incorporan la dependencia de variables mediante el uso de \textbf{Cópulas Gaussianas} y \textbf{distribuciones condicionales empíricas} \cite{aas2021explaining}. Estas técnicas permiten una descomposición del riesgo más fiel a la realidad delictiva, facilitando incluso la \textbf{agrupación (clustering)} de contribuciones de variables dependientes para ofrecer una visión más clara y accionable a los operadores jurídicos.
+
 % ============================================================
 \section{Descripción del Problema y los Datos}
 \label{sec:datos}
@@ -182,7 +183,20 @@ Para abordar este desafío, la literatura reciente propone extensiones de \texti
 \textit{Define formalmente la tarea de aprendizaje: tipo de tarea (clasificación, regresión\ldots), espacio de entrada y salida, y función objetivo. Por ejemplo: dado un vector de \textit{features} $\bm{x} \in \mathbb{R}^d$, aprender $f\colon \mathbb{R}^d \to \mathcal{Y}$ que minimiza $\mathcal{L}(f) = \mathbb{E}_{(\bm{x},y)\sim P}[\ell(f(\bm{x}),y)]$.}
 \end{orientacion}
 
-[Definición formal de la tarea aquí.]
+El problema abordado en este trabajo se enmarca dentro del aprendizaje supervisado, concretamente como una tarea de \textbf{clasificación binaria}. 
+
+
+Sea un espacio de entrada $\mathcal{X} \subseteq \mathbb{R}^d$, donde cada vector de características $\bm{x} \in \mathcal{X}$ representa el perfil de un individuo procesado por el sistema judicial. Definimos el espacio de salida o variable objetivo como $\mathcal{Y} = \{0, 1\}$, donde $y = 1$ indica que el individuo reincide en un plazo de dos años (\textit{two-year recidivism}) y $y = 0$ indica que no lo hace. Adicionalmente, denotamos por $A \in \mathcal{A}$ al atributo sensible o protegido presente en el espacio de entrada (en nuestro caso, la raza del individuo), donde $\mathcal{A}$ representa los posibles grupos demográficos (por ejemplo, afroamericano o caucásico).
+
+El objetivo principal del sistema es aprender una función predictiva $f\colon \mathcal{X} \to [0,1]$ que estime la probabilidad de reincidencia $\hat{y} = P(y=1 \mid \bm{x})$, minimizando el riesgo esperado respecto a una función de pérdida $\ell$:
+
+$$ \mathcal{L}(f) = \mathbb{E}_{(\bm{x},y)\sim P}[\ell(f(\bm{x}), y)] $$
+
+Sin embargo, dado el alto impacto social de las decisiones judiciales, la optimización tradicional del modelo predictivo está sujeta a restricciones de \textbf{equidad algorítmica} (\textit{fairness}). Por lo tanto, el objetivo de la tarea se reformula como un problema de optimización restringida, donde se busca minimizar la pérdida $\mathcal{L}(f)$ garantizando simultáneamente que el modelo cumpla con una métrica de equidad predefinida. Por ejemplo, si se busca optimizar bajo el criterio de Paridad Demográfica (\textit{Demographic Parity}), la predicción del modelo debe ser estadísticamente independiente del atributo sensible:
+
+$$ P(\hat{y} = 1 \mid A = a) = P(\hat{y} = 1 \mid A = b) \quad \forall a, b \in \mathcal{A} $$
+
+De este modo, la tarea no se limita a maximizar el rendimiento predictivo (precisión), sino a explorar empíricamente el compromiso (\textit{trade-off}) entre la precisión y la equidad algorítmica, incorporando posteriormente técnicas de explicabilidad (XAI) para auditar las predicciones $\hat{y}$ a nivel global y local.
 
 \subsection{Dataset}
 
@@ -195,20 +209,20 @@ La Tabla~\ref{tab:dataset} resume las características principales del \textit{d
 
 \begin{table}[H]
 \centering
-\caption{Características del \textit{dataset}.}
+\caption{Características del \textit{dataset} COMPAS original.}
 \label{tab:dataset}
 \small
-\begin{tabular}{@{}ll@{}}
+\begin{tabular}{@{}lp{10cm}@{}}
 \toprule
 \textbf{Característica} & \textbf{Valor} \\
 \midrule
-Fuente / enlace           & [UCI / Kaggle / \ldots] \\
-Número de instancias  & \\
-Número de \textit{features} & \\
-Variable objetivo         & \\
-Distribución de clases & [X\,\% clase 0 / Y\,\% clase 1] \\
-Valores ausentes          & [Sí / No --- estrategia de imputación] \\
-Licencia                  & \\
+Fuente / enlace           & ProPublica (repositorio oficial en GitHub) \\
+Número de instancias      & 7214 registros originales[cite: 1] (se reducen a 6167 tras la limpieza). \\
+Número de \textit{features} & 53 variables originales[cite: 1] (se seleccionan 13 relevantes para el modelado). \\
+Variable objetivo         & \texttt{two\_year\_recid}[cite: 1] (Binaria: 1 = reincide, 0 = no reincide). \\
+Distribución de clases & Aprox. 55\,\% clase 0 / 45\,\% clase 1 (en el subconjunto final filtrado). \\
+Valores ausentes          & Sí, el 18.6\,\% de las celdas totales están vacías[cite: 1]. Estrategia: Eliminación de columnas con alto porcentaje de nulos (ej. \texttt{c\_arrest\_date} con 84.2\,\%[cite: 1]) y filtrado de filas mediante eliminación por lista (\textit{listwise deletion}). \\
+Licencia                  & Open Data / Dominio público. \\
 \bottomrule
 \end{tabular}
 \end{table}
