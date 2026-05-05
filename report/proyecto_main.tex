@@ -22,6 +22,7 @@
 \usepackage{xcolor}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
+\usepackage{microtype}
 
 \lstset{
     language=Python,
@@ -141,30 +142,34 @@ La Sección~\ref{sec:resultados} presenta los resultados experimentales.
 La Sección~\ref{sec:discusion} discute las implicaciones.
 La Sección~\ref{sec:conclusiones} concluye el trabajo.
 
-
 % ============================================================
 \section{Trabajo Relacionado}
 \label{sec:related}
 % ============================================================
 
-\begin{orientacion}
-\orientaciontitle
-\textit{No se trata de resumir trabajos uno a uno, sino de sintetizar la literatura de forma crítica: ?`qué se ha hecho antes?, ?`qué limitaciones tienen esos enfoques?, ?`cómo se sitúa este trabajo respecto al estado del arte? Organiza la sección por temática en lugar de por autor. Cita al menos 5--6 referencias de calidad~\cite{ref1}.}
-\end{orientacion}
+\subsection{Modelos de predicción de reincidencia y el impacto de COMPAS}
 
-\subsection{[Trabajos sobre el problema abordado]}
+La aplicación de algoritmos de aprendizaje automático (\textit{Machine Learning}, ML) en el sistema de justicia penal se ha expandido como una herramienta para reducir los altos índices de reincidencia, que en diversas jurisdicciones internacionales alcanzan el 50\%. La literatura científica ha evolucionado desde el uso de escalas estadísticas simples hacia modelos complejos que buscan optimizar la toma de decisiones sobre libertad condicional y rehabilitación. En términos de rendimiento, revisiones sistemáticas recientes sitúan el estado del arte en una precisión ($ACC$) media de 0.81 y un área bajo la curva ($AUC$) de 0.74 \cite{travaini2022machine}. 
 
-[Síntesis de trabajos previos sobre el mismo problema o \textit{dataset}~\cite{ref1, ref2}.]
+Diversos estudios han explorado una amplia gama de arquitecturas para maximizar esta capacidad predictiva. Por ejemplo, Duwe y Kim (2017) emplearon algoritmos de \textit{LogitBoost} sobre el \textit{dataset} MnSTARR+, obteniendo un $ACC$ de 0.82 y un $AUC$ de 0.78 \cite{duwe2017out}. Por su parte, Singh y Mohapatra (2021) propusieron un modelo de ensamble (\textit{Ensemble Learning}) combinando clasificadores Bayesiano, KNN y SVM, alcanzando un $ACC$ de 0.87 en poblaciones de delincuentes primerizos \cite{singh2021development}. En contextos institucionales específicos, Butsara et al. (2019) reportaron precisiones de hasta 0.90 mediante regresión logística aplicada a internos en Tailandia \cite{butsara2019predicting}. Asimismo, para tipos de delitos específicos como el sexual, trabajos basados en Análisis Discriminante Lineal (LDA) y \textit{Random Forest} han reportado valores de $ACC$ de hasta 0.96 y $AUC$ de 0.78, respectivamente \cite{tollenaar2013method, salo2019predictive}. A pesar de estos avances técnicos, el caso de COMPAS ha puesto de manifiesto que un alto rendimiento no excluye la presencia de sesgos críticos, impulsando la necesidad de evaluar la equidad junto con la precisión \cite{angwin2016machine, karimi2021enhancing}.
 
-\subsection{[Técnicas para la problemática 1]}
+En este marco, el uso del \textit{dataset} COMPAS personifica la tensión entre la eficacia técnica y la integridad ética, tras la investigación de ProPublica \cite{angwin2016machine} que evidenció disparidades críticas a pesar de los rendimientos alcanzados. Si bien se han reportado precisiones elevadas con arquitecturas avanzadas, estudios comparativos indican que modelos interpretables como la regresión logística ---frecuentemente utilizada en este dominio--- presentan una validez predictiva y un rendimiento similares a algoritmos de ``caja negra'' como \textit{Random Forest}. Esta falta de superioridad empírica de los modelos complejos, sumada a su diseño inaccesible para el usuario humano, subraya la necesidad de transitar hacia algoritmos transparentes o técnicas de \textit{Explainable AI} (XAI) que permitan discernir cómo influyen individualmente variables como la etnia o la edad en la evaluación final del riesgo.
 
-[Resumen del estado del arte en la primera problemática identificada~\cite{ref3}.]
+\subsection{Equidad algorítmica y mitigación de sesgos}
 
-\subsection{[Técnicas para la problemática 2]}
+El principal desafío identificado en la literatura no reside únicamente en la capacidad predictiva, sino en la presencia de sesgos discriminatorios, particularmente raciales y de edad. Diversas investigaciones han señalado que estos sesgos pueden heredarse de métodos de recolección de datos sesgados o de un preprocesamiento inadecuado, factores que influyen significativamente en el rendimiento final del modelo. 
 
-[Resumen del estado del arte en la segunda problemática identificada~\cite{ref4}.]
+El enfoque actual en el estado del arte, ejemplificado por trabajos como los de Karimi-Haghighi y Castillo \cite{karimi2021enhancing}, se centra en integrar métricas de equidad (\textit{fairness}) directamente en el ciclo de vida del modelo. No obstante, una limitación crítica en muchos estudios previos es la falta de explicitud sobre el proceso de preprocesamiento, lo que dificulta la comparabilidad entre diferentes técnicas de mitigación de sesgo.
 
+\subsection{Explicabilidad (XAI) en el entorno judicial}
 
+La naturaleza de ``caja negra'' de muchos modelos avanzados de aprendizaje automático constituye una barrera crítica en el sistema judicial, ya que impide evaluar si la predicción de riesgo cumple con principios de justicia y debido proceso. Según la taxonomía establecida por Arrieta et al. \cite{arrieta2020explainable}, la explicabilidad no debe entenderse como un concepto unívoco, sino como una propiedad dependiente de la \textit{audiencia} (jueces, abogados o acusados), quienes requieren distintos niveles de transparencia técnica y comprensibilidad para validar las decisiones del sistema.
+
+En este ámbito, el estado del arte distingue entre modelos \textbf{intrínsecamente transparentes} --- que cumplen con propiedades de simulatabilidad, decomposabilidad y transparencia algorítmica--- y técnicas de \textbf{explicabilidad post-hoc} \cite{arrieta2020explainable}. Estas últimas son esenciales cuando se emplean algoritmos de alta complejidad (como \textit{XGBoost} o Redes Neuronales) para predecir la reincidencia, permitiendo iluminar el proceso de decisión sin sacrificar el rendimiento predictivo.
+
+Dentro de los métodos \textit{post-hoc}, la técnica \textit{SHAP} (\textit{SHapley Additive exPlanations}) se ha consolidado como el estándar para cuantificar la contribución de cada variable. No obstante, una limitación significativa de su implementación original (\textit{Kernel SHAP}) es el supuesto de independencia entre las características. Como demuestran Aas et al. \cite{aas2021explaining}, en entornos judiciales donde las variables socioeconómicas y delictivas suelen presentar una alta correlación, ignorar estas dependencias puede derivar en explicaciones inexactas o sesgadas.
+
+Para abordar este desafío, la literatura reciente propone extensiones de \textit{SHAP} que incorporan la dependencia de variables mediante el uso de \textbf{Cópulas Gaussianas} y \textbf{distribuciones condicionales empíricas} \cite{aas2021explaining}. Estas técnicas permiten una descomposición del riesgo más fiel a la realidad delictiva, facilitando incluso la \textbf{agrupación (clustering)} de contribuciones de variables dependientes para ofrecer una visión más clara y accionable a los operadores jurídicos.
 % ============================================================
 \section{Descripción del Problema y los Datos}
 \label{sec:datos}
@@ -424,8 +429,86 @@ Ciudad: Editorial, a\~{n}o.
 
 % Añadir el resto de referencias aquí
 
-\end{thebibliography}
+\bibitem{travaini2022machine}
+G. V. Travaini, F. Pacchioni, S. Bellumore, M. Bosia y F. De Micco,
+``Machine Learning and Criminal Justice: A Systematic Review of Advanced Methodology for Recidivism Risk Prediction,''
+\textit{International Journal of Environmental Research and Public Health},
+vol.~19, núm.~17, p.~10594, 2022.
+\href{https://doi.org/10.3390/ijerph191710594}{DOI:10.3390/ijerph191710594}
 
+\bibitem{angwin2016machine}
+J. Angwin, J. Larson, S. Mattu y L. Kirchner,
+``Machine Bias,''
+\textit{ProPublica}, 2016.
+\href{https://www.propublica.org/article/machine-bias-risk-assessments-in-criminal-sentencing}{URL: propublica.org/machine-bias}
+
+\bibitem{karimi2021enhancing}
+M. Karimi-Haghighi y C. Castillo,
+``Enhancing a recidivism prediction tool with machine learning: Effectiveness and algorithmic fairness,''
+in \textit{Proc. 18th International Conference on Artificial Intelligence and Law (ICAIL)},
+São Paulo, Brasil, 2021, pp.~79--88.
+\href{https://doi.org/10.1145/3462757.3466144}{DOI:10.1145/3462757.3466144}
+
+\bibitem{duwe2017out}
+G. Duwe y K. Kim,
+``Out with the Old and in with the New? An Empirical Comparison of Supervised Learning Algorithms to Predict Recidivism,''
+\textit{Criminal Justice Policy Review},
+vol.~28, núm.~6, pp.~570--600, 2017.
+\href{https://doi.org/10.1177/0887403415604899}{DOI:10.1177/0887403415604899}
+
+\bibitem{gunning2019darpa}
+D. Gunning y D. W. Aha,
+``DARPA’s explainable artificial intelligence program,''
+\textit{AI Magazine},
+vol.~40, núm.~2, pp.~44--58, 2019.
+\href{https://doi.org/10.1609/aimag.v40i2.2850}{DOI:10.1609/aimag.v40i2.2850}
+
+\bibitem{chouldechova2017fair}
+A. Chouldechova,
+``Fair prediction with disparate impact: A study of bias in recidivism prediction instruments,''
+\textit{Big Data},
+vol.~5, núm.~2, pp.~153--163, 2017. 
+\href{https://doi.org/10.1089/big.2016.0047}{DOI:10.1089/big.2016.0047}
+
+\bibitem{singh2021development}
+A. Singh y S. Mohapatra,
+``Development of risk assessment framework for first time offenders using ensemble learning,''
+\textit{IEEE Access},
+vol.~9, pp.~135024--135033, 2021.
+
+\bibitem{butsara2019predicting}
+N. Butsara, P. Athonthitichot y P. Jodpimai,
+``Predicting recidivism to drug distribution using machine learning techniques,''
+in \textit{Proc. 17th Int. Conf. on ICT and Knowledge Engineering},
+Bangkok, Tailandia, 2019, pp.~1--5.
+
+\bibitem{tollenaar2013method}
+N. Tollenaar y P. G. M. van der Heijden,
+``Which method predicts recidivism best?: A comparison of statistical, machine learning and data mining predictive models,''
+\textit{J. R. Stat. Soc. Ser. A Stat. Soc.},
+vol.~176, pp.~565--584, 2013.
+
+\bibitem{salo2019predictive}
+B. Salo, T. Laaksonen y P. Santtila,
+``Predictive Power of Dynamic (vs. Static) Risk Factors in the Finnish Risk and Needs Assessment Form,''
+\textit{Crim. Justice Behav.},
+vol.~46, pp.~939--960, 2019.
+
+\bibitem{arrieta2020explainable}
+A. B. Arrieta, N. Díaz-Rodríguez, J. Del Ser et al.,
+``Explainable Artificial Intelligence (XAI): Concepts, taxonomies, opportunities and challenges,''
+\textit{Information Fusion},
+vol.~58, pp.~82--115, 2020.
+\href{https://doi.org/10.1016/j.inffus.2019.12.012}{DOI:10.1016/j.inffus.2019.12.012}
+
+\bibitem{aas2021explaining}
+K. Aas, M. Jullum y A. Løland,
+``Explaining individual predictions when features are dependent: More accurate approximations to Shapley values,''
+\textit{Artificial Intelligence},
+vol.~298, p.~103502, 2021.
+\href{https://doi.org/10.1016/j.artint.2021.103502}{DOI:10.1016/j.artint.2021.103502}
+
+\end{thebibliography}
 
 % ============================================================
 %  ANEXOS (opcionales)
