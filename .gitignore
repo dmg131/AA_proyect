@@ -33,3 +33,13 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# LaTeX generated files (keep only .tex files)
+*.aux
+*.fdb_latexmk
+*.fls
+*.toc
+*.log
+*.out
+*.synctex.gz
+*.pdf
