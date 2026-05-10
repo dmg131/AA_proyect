@@ -269,14 +269,8 @@ A partir del análisis del \textit{dataset} y del contexto de uso del sistema, s
 \textit{Esta sección debe ser suficientemente detallada para que el trabajo sea reproducible. Describe el \textit{pipeline} completo, justifica cada decisión de dise\~{n}o, e incluye la formulación matemática de las técnicas que lo requieran.}
 \end{orientacion}
 
-\subsection{Preprocesamiento}
-
-[Cadena de preprocesamiento: imputación de valores ausentes, escalado, codificación de variables categóricas, división train/test y estratificación.]
-
-% ============================================================
 \subsection{Preprocesamiento de Datos}
 \label{subsec:preprocesamiento}
-% ============================================================
 
 Tras la fase de Análisis Exploratorio de Datos (EDA) y la limpieza inicial de la muestra siguiendo los criterios de \textit{ProPublica}, se procedió a la construcción de un \textit{pipeline} de transformación robusto. El objetivo fundamental de esta etapa es mitigar el sesgo técnico, prevenir el \textit{data leakage} (fuga de datos) y garantizar la estabilidad numérica de los algoritmos de aprendizaje automático.
 
