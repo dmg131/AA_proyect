@@ -1,4 +1,10 @@
-numpy 
+numpy
 pandas
-matplotlib.pyplot
+matplotlib
 seaborn
+ydata-profiling
+scikit-learn
+xgboost
+fairlearn
+shap
+notebook
