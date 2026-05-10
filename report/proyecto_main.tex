@@ -229,20 +229,56 @@ Licencia                  & Open Data / Dominio público. \\
 
 \subsection{Análisis exploratorio (EDA)}
 
-\begin{orientacion}
-\orientaciontitle
-\textit{Incluye las visualizaciones más informativas: distribución de la variable objetivo, correlaciones relevantes, distribución de variables sensibles si las hay. El EDA debe estar orientado a identificar las problemáticas del trabajo, no ser un catálogo exhaustivo de gráficas.}
-\end{orientacion}
+El preprocesamiento inicial del conjunto de datos original reveló un alto volumen de valores ausentes (NaNs) y variables problemáticas. Se procedió a descartar todas las columnas con un porcentaje de nulos superior al 80\,\%, así como aquellas variables con el prefijo \texttt{r\_}, asociadas a la reincidencia posterior, para evitar la introducción de sesgos por \textit{data leakage}. Además, se aplicaron los filtros metodológicos del estudio de ProPublica (desfase temporal razonable entre arresto y evaluación, existencia de seguimiento real, exclusión de infracciones de tráfico ordinarias y exigencia de un veredicto válido emitido por el sistema COMPAS). La decisión de eliminar los valores nulos residuales en lugar de reconstruirlos mediante técnicas de imputación se fundamenta en un principio ético: en el contexto de los Sistemas de Soporte a la Decisión Judicial, la reconstrucción sintética de historiales penales resulta inaceptable, debiendo el modelo basarse de forma exclusiva en hechos fácticos y fehacientes.
 
-[Análisis exploratorio aquí: 2--3 párrafos con las figuras más relevantes.]
+Una vez saneado el \textit{dataset}, el análisis univariado (Figura \ref{fig:eda_univariado}) mostró una distribución relativamente equilibrada de la variable objetivo (\texttt{two\_year\_recid}), lo que indica que no será estrictamente necesario aplicar técnicas de balanceo sintético de clases. Asimismo, la distribución de la variable demográfica sensible (\texttt{race}) refleja que la muestra está compuesta mayoritariamente por individuos afroamericanos y caucásicos.
 
 \begin{figure}[H]
-\centering
-% \includegraphics[width=0.7\textwidth]{figuras/eda.pdf}
-\textit{[Insertar figura del EDA.]}
-\caption{[Descripción de la figura del EDA.]}
-\label{fig:eda}
+    \centering
+    \includegraphics[width=\textwidth]{Images/eda_univariado.png}
+    \caption{Análisis univariado: Distribución de la variable objetivo (reincidencia a dos años) y de la variable protegida (raza).}
+    \label{fig:eda_univariado}
 \end{figure}
+
+No obstante, la problemática central del estudio afloró al cruzar la evaluación de riesgo original del sistema COMPAS (\texttt{decile\_score}) con dicha variable protegida. Como se observa en la Figura \ref{fig:eda_sesgo_racial}, la población caucásica concentra sus evaluaciones mayoritariamente en los niveles de riesgo más bajos, cayendo drásticamente en los deciles superiores. Por el contrario, la población afroamericana presenta una distribución mucho más uniforme, manteniendo frecuencias de clasificación alarmantemente altas en los niveles de riesgo máximo (deciles 8, 9 y 10).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Images/eda_sesgo_racial.png}
+    \caption{Distribución del nivel de riesgo (\textit{Decile Score}) asignado por COMPAS segmentado por los dos grupos demográficos mayoritarios.}
+    \label{fig:eda_sesgo_racial}
+\end{figure}
+
+La matriz de correlación (Figura \ref{fig:eda_correlacion}) confirma las hipótesis planteadas sobre la naturaleza del \textit{dataset} y sus sesgos intrínsecos. Por un lado, se valida la coherencia predictiva general: el historial delictivo adulto (\texttt{priors\_count}) y la edad (\texttt{age}) son los factores que mayor peso tienen en la puntuación de riesgo del sistema original (\texttt{decile\_score}), con correlaciones de $0.45$ y $-0.40$ respectivamente. Sin embargo, el hallazgo más crítico reside en la interacción entre la variable protegida y las predicciones del algoritmo. La matriz revela una disparidad evidente: la pertenencia al grupo demográfico afroamericano presenta una correlación positiva ($0.31$) con la puntuación de riesgo, mientras que para la población caucásica la correlación es negativa ($-0.20$). Estas métricas justifican plenamente la necesidad de aplicar técnicas de mitigación algorítmica (\textit{Fairness}) en el desarrollo del nuevo sistema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Images/eda_correlacion.png}
+    \caption{Matriz de correlación destacando las interacciones entre historial delictivo, atributos protegidos y la evaluación del sistema.}
+    \label{fig:eda_correlacion}
+\end{figure}
+
+Para profundizar en las dos variables de mayor impacto predictivo, se analizó su densidad en función de la variable objetivo (Figura \ref{fig:eda_densidades}). Las curvas demuestran visualmente cómo la madurez del individuo mitiga sustancialmente la probabilidad de volver a delinquir (concentrando a los reincidentes en las franjas más jóvenes), mientras que la acumulación de arrestos previos ensancha significativamente la curva de densidad hacia la reincidencia efectiva.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Images/eda_densidades_edad_priors.png}
+    \caption{Análisis de densidad bivariado de las variables \texttt{age} y \texttt{priors\_count} segmentadas por reincidencia.}
+    \label{fig:eda_densidades}
+\end{figure}
+
+Finalmente, se abordó el estudio de la dispersión de los datos (Figura \ref{fig:eda_outliers}). En las imágenes analizadas se observa un comportamiento demográfico natural en la variable de la edad, ya que presenta valores atípicos (\textit{outliers}) lógicos a partir de los 70 años. En el caso de los conteos juveniles y de arrestos previos, las distribuciones muestran cómo la mayoría de los acusados se concentra en cero o en muy pocos delitos previos. Sin embargo, existe una cola larga evidente: un grupo reducido pero significativo de reincidentes crónicos que superan el límite superior del rango intercuartílico (IQR), llegando a acumular hasta 40 arrestos previos en su etapa adulta o 20 delitos graves en su etapa juvenil.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Images/eda_outliers_priors_count.png}
+    \caption{Análisis de valores atípicos para la variable \texttt{priors\_count}. A la izquierda, el \textit{Box Plot} identifica la mediana y el rango intercuartílico; a la derecha, el \textit{Scatter Plot} ordenado muestra cómo los reincidentes crónicos superan significativamente el límite superior estadístico.}
+    \label{fig:eda_outliers}
+\end{figure}
+
+Dado que no existen \textit{outliers} que deriven de errores de recolección en el \textit{dataset}, no se eliminó a ningún individuo, ya que representan perfiles criminalísticos reales. Además, al basarse el nuevo modelo predictivo en algoritmos de tipo Árbol (como \textit{Random Forest}), se descartó la aplicación de técnicas de capeo (\textit{clipping}); la naturaleza de estos algoritmos permite definir fronteras de partición eficaces sin verse distorsionados por la magnitud extrema del historial delictivo.
+
+A modo de conclusión de esta fase exploratoria, todas las decisiones metodológicas justificadas (filtros de calidad oficial, tratamiento estricto de nulos, exclusión de variables con riesgo de \textit{data leakage} y selección de atributos) se han encapsulado en una única función modular de preprocesamiento (\texttt{load\_and\_clean\_compas}). Esta unificación garantiza la reproducibilidad del experimento, previniendo errores manuales y asegurando que las fases posteriores de \textit{Machine Learning} operen bajo los más estrictos estándares de rigor estadístico e integridad ética.
 
 \subsection{Problemáticas identificadas}
 
