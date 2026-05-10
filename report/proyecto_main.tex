@@ -372,6 +372,44 @@ Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{Co
 %   \label{eq:ejemplo}
 % \end{equation}
 
+% ============================================================
+\subsection{Tratamiento de la problemática 1: Mitigación de Sesgo Multidimensional mediante Optimización Restringida}
+\label{subsec:mitigacion_sesgo}
+% ============================================================
+
+La reducción del sesgo en el modelo COMPAS presenta un desafío técnico fundamental: el sesgo no es una propiedad aislada de un único atributo, sino un fenómeno sistémico que impregna múltiples dimensiones de los datos. Si bien la raza (\textit{race}) se identifica como el atributo sensible primario siguiendo la investigación de \textit{ProPublica}, factores como la edad y el historial delictivo temprano actúan como variables latentes que pueden perpetuar la discriminación incluso si se eliminan las etiquetas raciales.
+
+Por ello, en lugar de un preprocesamiento de ''ceguera al color'' (\textit{fairness through unawareness}), este trabajo propone un enfoque de \textbf{Mitigación Proactiva} basada en el aprendizaje con restricciones (\textit{in-processing}). El objetivo es ''obligar'' al modelo a encontrar patrones de reincidencia que sean estadísticamente independientes de la identidad del individuo.
+
+\subsubsection{Metodología: Reducción de Gradiente Exponencial}
+
+Se ha seleccionado el algoritmo de \textbf{Reducción de Gradiente Exponencial} (\textit{Exponentiated Gradient}) para intervenir directamente en el ciclo de entrenamiento del clasificador \textit{XGBoost}. Esta técnica no se limita a observar el sesgo, sino que lo trata como un problema de optimización de juego de suma cero entre dos entidades matemáticas:
+
+\begin{enumerate}
+    \item \textbf{El Clasificador:} Cuyo objetivo es minimizar el error de predicción ($\mathcal{L}$).
+    \item \textbf{El Auditor (Adversario):} Que impone penalizaciones económicas al clasificador cada vez que detecta una violación de la equidad entre grupos.
+\end{enumerate}
+
+
+
+\subsubsection{Formulación Matemática y Criterio de Decisión}
+
+Para tratar el sesgo, el algoritmo busca minimizar la pérdida del modelo sujeta a restricciones de \textbf{Equalized Odds} (Igualdad de Probabilidades). Formalmente, buscamos un clasificador $f$ que resuelva:
+
+\begin{equation}
+    \min_{f} \mathcal{L}(f) \quad \text{s.a.} \quad \gamma_a(f) - \gamma_b(f) \leq \epsilon \quad \forall a,b \in \mathcal{A}
+\end{equation}
+
+Donde $\gamma$ representa la tasa de error (específicamente la Tasa de Falsos Positivos, FPR, y la Tasa de Verdaderos Positivos, TPR) condicionada al grupo sensible. El parámetro $\epsilon$ actúa como el ''presupuesto de justicia'', permitiéndonos definir qué nivel de disparidad es tolerable para el sistema. 
+
+Al igualar simultáneamente el FPR y el TPR, garantizamos que el sistema no ''aprenda'' a ser más erróneo con los individuos de una raza específica, mitigando así la tendencia histórica del algoritmo original a castigar injustamente a sujetos que no reinciden.
+
+\subsubsection{Justificación de la Robustez Multidimensional}
+
+Se ha optado por esta técnica \textit{in-processing} por su capacidad para manejar la \textbf{discriminación indirecta}. Al intervenir en el gradiente del modelo, el algoritmo detecta y neutraliza las correlaciones ocultas en variables como el número de arrestos previos o la edad del primer arresto, que a menudo sirven como ''proxies'' de la raza. 
+
+Este enfoque no solo garantiza el cumplimiento de los estándares éticos de este estudio, sino que se alinea con los requisitos de \textbf{seguridad algorítmica y control de sesgos} exigidos por el \textit{AI Act} de la Unión Europea para sistemas de alto riesgo en la justicia penal. De este modo, la solución técnica propuesta transita de una simple predicción estadística hacia una evaluación de riesgo fundamentada en principios de justicia distributiva.
+
 \subsection{Tratamiento de la problemática 2: [nombre]}
 
 [Descripción, formulación y justificación.]
@@ -385,6 +423,23 @@ Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{Co
 
 [Descripción del protocolo de evaluación y justificación de las métricas elegidas.]
 
+\subsubsection{Protocolo de Evaluación de Equidad: De la Paridad al Error Condicional}
+
+La auditoría de equidad en sistemas de riesgo criminal no puede reducirse a una observación de la precisión agregada. El caso \textit{COMPAS} \cite{angwin2016machine} marcó un hito al demostrar que un modelo puede ser estadísticamente preciso y, simultáneamente, sistemáticamente injusto. La narrativa del sesgo algorítmico comenzó cuestionando la \textbf{Paridad Demográfica}, la cual exige que la tasa de predicción positiva sea igual entre grupos ($P(\hat{y}=1 \mid A=a) = P(\hat{y}=1 \mid A=b)$). Sin embargo, este enfoque es ciego al comportamiento real: si las tasas base de reincidencia difieren debido a factores socioeconómicos sistémicos, forzar la paridad demográfica puede degradar la utilidad del modelo o introducir nuevas injusticias.
+
+La verdadera problemática revelada por la investigación de \textit{ProPublica} \cite{angwin2016machine} y formalizada por \textit{Chouldechova} \cite{chouldechova2017fair} no residía en cuántas personas eran marcadas como reincidentes, sino en la \textbf{naturaleza de los errores}. Se descubrió que el algoritmo castigaba desproporcionadamente a los individuos afroamericanos con una Tasa de Falsos Positivos (FPR) mucho mayor, mientras que era más indulgente con los individuos caucásicos mediante una mayor Tasa de Falsos Negativos (FNR).
+
+Por ello, este estudio adopta el criterio de \textbf{Equalized Odds} (Igualdad de Probabilidades). Esta métrica exige que los errores se distribuyan de forma equitativa, garantizando que la capacidad del modelo para predecir correctamente la reincidencia (TPR) y su tendencia a equivocarse injustamente (FPR) sean independientes del atributo racial. Bajo esta premisa, se definen las siguientes métricas de evaluación:
+
+\begin{itemize}
+    \item \textbf{Equalized Odds Difference:} Representa el compromiso técnico con la justicia distributiva. Mide la disparidad máxima entre las tasas de Verdaderos Positivos (TPR) y Falsos Positivos (FPR) entre los grupos analizados. Su objetivo es minimizar la función:
+    \begin{equation}
+        \max_{y \in \{0,1\}} \max_{a,b \in \mathcal{A}} |P(\hat{y}=1 \mid A=a, y=y) - P(\hat{y}=1 \mid A=b, y=y)|
+    \end{equation}
+    Un valor cercano a cero indica que el modelo es igual de preciso e igual de erróneo con todos los grupos \cite{karimi2021enhancing}.
+
+    \item \textbf{FPR Disparity Ratio:} Actúa como la métrica de auditoría forense. Se calcula como el cociente entre la tasa de falsos positivos del grupo desfavorecido frente al grupo privilegiado. Un ratio superior a 1.25 indica un \textit{impacto dispar} significativo, revelando que el sistema etiqueta erróneamente como reincidentes a miembros de un grupo con una frecuencia desproporcionada \cite{angwin2016machine}.
+\end{itemize}
 
 % ============================================================
 \section{Experimentos y Resultados}
