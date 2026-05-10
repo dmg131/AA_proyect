@@ -251,11 +251,16 @@ Licencia                  & Open Data / Dominio público. \\
 \textit{Justifica aquí qué problemáticas son relevantes para este problema concreto. La argumentación debe basarse en: (1)~el contexto de uso real del sistema (?`quién usa el modelo?, ?`sobre quién toma decisiones?), (2)~las características del \textit{dataset} (?`hay atributos sensibles?, ?`está desbalanceado?), y (3)~las obligaciones legales aplicables (RGPD, AI Act).}
 \end{orientacion}
 
-A partir del análisis del \textit{dataset} y del contexto de uso del sistema, se han identificado las siguientes problemáticas:
+A partir del análisis del \textit{dataset} y del contexto de uso del sistema en el ámbito penal, se han identificado las siguientes problemáticas críticas que deben ser abordadas para garantizar un despliegue ético y técnico:
 
 \begin{itemize}
-    \item \textbf{[Problemática 1]:} [Justificación.]
-    \item \textbf{[Problemática 2]:} [Justificación.]
+    \item \textbf{Sesgo Algorítmico y Falta de Equidad (\textit{Fairness}):} 
+    El contexto de uso real del sistema implica la toma de decisiones que afectan directamente a la libertad fundamental de los individuos. El \textit{dataset} COMPAS contiene atributos sensibles explícitos, principalmente la raza (\textit{race}), que han demostrado históricamente ser fuentes de disparidad en las tasas de error de falsos positivos entre diferentes grupos demográficos. 
+    Desde una perspectiva legal, el Reglamento de Inteligencia Artificial de la UE (\textit{AI Act}) clasifica los sistemas de evaluación de riesgos en la justicia como de \textbf{alto riesgo} (Anexo III). Esto impone la obligación estricta de implementar medidas de control de sesgos para evitar discriminaciones prohibidas por la Carta de los Derechos Fundamentales de la UE y el RGPD, los cuales exigen que el tratamiento de datos no resulte en resultados discriminatorios por motivos de origen étnico o racial.
+
+    \item \textbf{Opacidad del Modelo y Necesidad de Explicabilidad (\textit{Explainability}):} 
+    Dada la complejidad de las interacciones entre las variables socioeconómicas y los antecedentes penales en el \textit{dataset} (ej. la correlación entre \textit{priors\_count} y \textit{age}), los modelos con mayor rendimiento predictivo suelen operar como ``cajas negras''. En un entorno judicial, el derecho al debido proceso exige que cualquier decisión automatizada sea justificable y comprensible para las partes implicadas (jueces, abogados y acusados). 
+    La problemática reside en la tensión entre la precisión técnica y la transparencia operativa. Bajo el RGPD (Art. 22), los ciudadanos tienen el derecho a recibir una \textbf{explicación significativa} sobre la lógica aplicada en decisiones automatizadas que produzcan efectos jurídicos. Por tanto, es imperativo aplicar técnicas de XAI que permitan descomponer la influencia de cada variable en la predicción individual de riesgo para garantizar la seguridad jurídica del sistema.
 \end{itemize}
 
 
