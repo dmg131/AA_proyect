@@ -269,9 +269,42 @@ A partir del análisis del \textit{dataset} y del contexto de uso del sistema, s
 \textit{Esta sección debe ser suficientemente detallada para que el trabajo sea reproducible. Describe el \textit{pipeline} completo, justifica cada decisión de dise\~{n}o, e incluye la formulación matemática de las técnicas que lo requieran.}
 \end{orientacion}
 
-\subsection{Preprocesamiento}
+\subsection{Preprocesamiento de Datos}
+\label{subsec:preprocesamiento}
 
-[Cadena de preprocesamiento: imputación de valores ausentes, escalado, codificación de variables categóricas, división train/test y estratificación.]
+Tras la fase de Análisis Exploratorio de Datos (EDA) y la limpieza inicial de la muestra siguiendo los criterios de \textit{ProPublica}, se procedió a la construcción de un \textit{pipeline} de transformación robusto. El objetivo fundamental de esta etapa es mitigar el sesgo técnico, prevenir el \textit{data leakage} (fuga de datos) y garantizar la estabilidad numérica de los algoritmos de aprendizaje automático.
+
+\subsubsection{División del Conjunto de Datos y Estratificación}
+
+En primera instancia, el dataset fue segmentado en conjuntos de entrenamiento ($70\%$) y prueba ($30\%$). Para preservar la representatividad de las clases y de los grupos demográficos sensibles, se aplicó una estratificación multidimensional. 
+
+Dada la naturaleza del problema, la estratificación no solo se realizó sobre la variable objetivo ($y$: \textit{two\_year\_recid}), sino también sobre la variable protectora \textit{race}. Esta decisión es crítica en estudios de \textit{fairness} (equidad), ya que garantiza que las distribuciones de probabilidad de los grupos protegidos sean equivalentes en ambos conjuntos, permitiendo una evaluación imparcial de las métricas de disparidad.
+
+\subsubsection{Tratamiento de Valores Ausentes (Imputación)}
+
+A pesar del filtrado previo, se implementó una estrategia de imputación univariante para asegurar la integridad del \textit{pipeline} ante datos no observados en producción:
+\begin{itemize}
+    \item \textbf{Variables numéricas:} Se utilizó la imputación por la mediana. Se optó por esta medida de tendencia central en lugar de la media debido a la asimetría observada en variables como \textit{priors\_count} y \textit{juv\_fel\_count}, siendo la mediana un estimador más robusto frente a valores atípicos.
+    \item \textbf{Variables categóricas:} Se empleó la imputación por el valor más frecuente (moda), garantizando la consistencia semántica de categorías como \textit{age\_cat} o \textit{c\_charge\_degree}.
+\end{itemize}
+
+\subsubsection{Codificación de Variables Categóricas}
+
+Para transformar los atributos cualitativos en tensores numéricos procesables por los modelos, se aplicó una codificación \textit{One-Hot Encoding} (OHE). Con el fin de evitar la multicolinealidad, conocida como la \textit{trampa de la variable ficticia} (dummy variable trap), se eliminó la primera categoría de cada atributo codificado ($k-1$ variables). Esto resulta esencial para modelos lineales y redes neuronales, donde la redundancia de información puede derivar en una matriz de diseño singular o inestable.
+
+\subsubsection{Normalización de Atributos Numéricos}
+
+Considerando que los modelos de predicción de reincidencia suelen basarse en funciones de distancia o gradientes, la disparidad de magnitudes entre variables (ej. \textit{age} vs \textit{juv\_fel\_count}) puede sesgar el aprendizaje. Se aplicó una estandarización de \textit{Z-score}, definida matemáticamente como:
+
+\begin{equation}
+    z = \frac{x - \mu}{\sigma}
+\end{equation}
+
+Donde $\mu$ representa la media aritmética y $\sigma$ la desviación estándar del conjunto de entrenamiento. Es imperativo destacar que los parámetros $\mu$ y $\sigma$ fueron calculados exclusivamente sobre el conjunto de \textit{train} y extrapolados al de \textit{test}, evitando así la contaminación de información del futuro hacia el modelo.
+
+\subsubsection{Construcción del Transformer}
+
+Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{ColumnTransformer} de Scikit-Learn. Esta arquitectura de software garantiza la reproducibilidad del experimento y asegura que cualquier dato nuevo que ingrese al sistema sea procesado bajo los mismos criterios estadísticos, manteniendo la coherencia del flujo de trabajo de aprendizaje automático.
 
 \subsection{Modelo \textit{baseline}}
 
