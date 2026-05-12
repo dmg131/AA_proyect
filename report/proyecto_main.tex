@@ -354,6 +354,44 @@ Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{Co
 \textit{El \textit{baseline} es el punto de referencia contra el que compararás las técnicas aplicadas. Elige un modelo estándar apropiado para la tarea y justifica su elección.}
 \end{orientacion}
 
+Para establecer un punto de referencia empírico riguroso en este estudio, se ha seleccionado un ensamblado basado en el algoritmo \textit{Extreme Gradient Boosting} (XGBoost) como modelo \textit{baseline}. Este clasificador servirá como el techo predictivo en su estado puro (sin restricciones algorítmicas de equidad). Su propósito metodológico se fundamente en dos aspectos: por un lado, actúa como representante de las "cajas negras" actuales utilizadas en la industria. Por otro, permite cuantificar posteriormente el impacto de las técnicas de mitigación de sesgo, midiendo cuánta utilidad predictiva (AUC-ROC o \textit{Accuracy}) se sacrifica, si la hubiese, para lograr la Paridad Demográfica.
+
+La elección de XGBoost se justifica fundamentalmente por dos vías: empírica y metodológica.
+
+\textbf{Justificación empírica:} 
+De forma preliminar a la elección del modelo base, se llevó a cabo una evaluación cruzada (\textit{Grid Search} con \textit{Stratified 5-Fold CV}) contrastando XGBoost contra otras arquitecturas estándar ampliamente documentadas en la literatura criminológica (Regresión Logística, Árboles de Decisión, \textit{Random Forest} y Máquinas de Vectores de Soporte). Los resultados empíricos demostraron que XGBoost presenta la mayor capacidad de generalización para este conjunto de datos específico, consolidándose como el algoritmo con mayor poder predictivo (medido a través de la métrica AUC-ROC).
+
+
+\begin{table}[H]
+\centering
+\caption{Comparativa de rendimiento predictivo de los modelos evaluados mediante Validación Cruzada Estratificada (5-Folds). Los valores óptimos para cada métrica se destacan en negrita.}
+\label{tab:comparativa_modelos}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Modelo} & \textbf{AUC-ROC} & \textbf{Accuracy} & \textbf{F1-Score} & \textbf{Precision} & \textbf{Recall} \\
+\midrule
+XGBoost & \textbf{0.7406} & 0.6912 & 0.6414 & \textbf{0.6807} & 0.6068 \\
+Random Forest & 0.7370 & \textbf{0.6921} & \textbf{0.6529} & 0.6710 & 0.6363 \\
+SVM & 0.7315 & 0.6845 & 0.6315 & 0.6746 & 0.5941 \\
+Regresión Logística & 0.7305 & 0.6787 & 0.6425 & 0.6514 & 0.6343 \\
+Árbol de Decisión & 0.7271 & 0.6870 & 0.6496 & 0.6632 & \textbf{0.6374} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\textbf{Justificación teórico-metodológica:}
+Más allá de su rendimiento numérico, la arquitectura de XGBoost resulta excepcionalmente adecuada para modelar la reincidencia, que son datos tabulares de alta complejidad, por las siguientes razones:
+
+\begin{itemize}
+    \item \textbf{Gestión de interacciones no lineales:} A diferencia de los modelos lineales estadísticos tradicionales, los ensamblados basados en árboles de decisión (\textit{Tree-based ensembles}) pueden capturar interacciones paramétricas complejas de forma nativa (por ejemplo, el efecto cruzado entre la edad temprana y un alto número de delitos juveniles previos).
+    \item \textbf{Robustez frente al ruido humano (\textit{Overfitting}):} Los datos derivados del comportamiento humano y de la administración de justicia penal poseen un nivel extremo de ruido estocástico. XGBoost proporciona mecanismos avanzados de regularización (como el submuestreo drástico de filas y columnas por árbol, y el control estricto de la profundidad máxima). Esto permitió, durante la optimización, forzar a la arquitectura a crear un bosque de árboles "débiles y simples" que evita la memorización de casos atípicos o historiales anecdóticos.
+\end{itemize}
+
+En definitiva, este modelo \textit{baseline} representa fielmente el estado del arte predictivo: una herramienta altamente eficaz en la minimización del error de clasificación, pero que, sin un marco de supervisión ética activa, hereda y amplifica silenciosamente las disparidades raciales codificadas en los datos de entrada.
+
+
 [Descripción del modelo \textit{baseline} y justificación.]
 
 \subsubsection{Selección del modelo}
