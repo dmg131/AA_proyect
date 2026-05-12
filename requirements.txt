@@ -7,3 +7,4 @@ xgboost
 fairlearn
 shap
 notebook
+lime
