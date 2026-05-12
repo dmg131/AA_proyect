@@ -526,7 +526,14 @@ La principal ventaja de LIME es su independencia respecto al modelo utilizado, p
 \textit{Describe cómo se evalúan los modelos: tipo de validación cruzada, métricas elegidas y justificación de su elección. Si el \textit{dataset} está desbalanceado, justifica el uso de métricas robustas (F1, AUC-ROC, etc.) en lugar de \textit{accuracy}.}
 \end{orientacion}
 
-[Descripción del protocolo de evaluación y justificación de las métricas elegidas.]
+Para garantizar la solidez estadística de los resultados empíricos y mitigar el riesgo de sobreajuste (\textit{overfitting}), la evaluación predictiva de los modelos se fundamenta en un protocolo de Validación Cruzada Estratificada de 5 particiones. La estratificación se realiza asegurando que la proporción original de la variable objetivo (reincidencia a dos años) se mantenga constante en cada uno de los pliegues de entrenamiento y prueba, permitiendo mediciones de rendimiento consistentes en todas las iteraciones.
+
+Dada la naturaleza criminológica del \textit{dataset} COMPAS, donde los costes sociales de los errores de clasificación son altamente asimétricos, evaluar el rendimiento de los algoritmos basándose exclusivamente en la exactitud global (\textit{Accuracy}) resulta metodológicamente insuficiente y potencialmente engañoso. Para obtener una evaluación integral del comportamiento del modelo base, se ha definido un protocolo multimétrica robusto:
+
+\begin{itemize}
+    \item \textbf{Área Bajo la Curva ROC (AUC-ROC):} Se establece como la métrica principal para la selección y optimización de hiperparámetros. Al ser independiente del umbral de clasificación, resulta idónea para mitigar los efectos del desbalance de datos, evaluando la probabilidad de que el modelo clasifique a un reincidente real con un nivel de riesgo mayor que a un no reincidente.
+    \item \textbf{F1-Score, Precision y Recall:} El uso del F1-Score (la media armónica entre la precisión y la exhaustividad) es vital en el contexto de la justicia penal para encontrar un punto de equilibrio ético y operativo. La Precisión mide la certidumbre del modelo al emitir una predicción de alto riesgo (minimizando los falsos positivos, que se traducen en medidas punitivas injustificadas). Por su parte, el Recall evalúa la capacidad del algoritmo para detectar a la mayor cantidad posible de infractores reales (minimizando los falsos negativos, que representan un peligro latente para la seguridad pública).
+\end{itemize}
 
 \subsubsection{Protocolo de Evaluación de Equidad: De la Paridad al Error Condicional}
 
