@@ -27,7 +27,7 @@ def load_and_clean_compas(path):
     ]
     
     features = [
-        'sex', 'age', 'age_cat', 'race', 
+        'sex', 'age', 'race', 
         'juv_fel_count', 'juv_misd_count', 'juv_other_count', 
         'priors_count', 'c_charge_degree'
     ]
@@ -38,7 +38,7 @@ def load_and_clean_compas(path):
 def obtener_preprocesador():
     """Construye y devuelve el ColumnTransformer configurado."""
     numeric_features = ['age', 'juv_fel_count', 'juv_misd_count', 'juv_other_count', 'priors_count']
-    categorical_features = ['sex', 'age_cat', 'race', 'c_charge_degree']
+    categorical_features = ['sex', 'race', 'c_charge_degree']
 
     numeric_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median')),
@@ -58,18 +58,22 @@ def obtener_preprocesador():
     )
     return preprocessor
 
-def evaluar_rendimiento(model, X_test_proc, y_test):
+def evaluar_rendimiento(model, X_test, y_test):
     """Calcula y devuelve las métricas de rendimiento predictivo estándar."""
-    y_pred = model.predict(X_test_proc)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+    
     acc = accuracy_score(y_test, y_pred)
+    auc = roc_auc_score(y_test, y_proba)
     f1 = f1_score(y_test, y_pred)
     
-    print("--- Rendimiento del Modelo ---")
+    print("Rendimiento del Modelo")
+    print(f"AUC-ROC: {auc:.4f}")
     print(f"Accuracy: {acc:.4f}")
     print(f"F1-Score: {f1:.4f}\n")
     print("Reporte de Clasificación:\n", classification_report(y_test, y_pred))
     
-    return {"Accuracy": acc, "F1": f1}
+    return {"AUC": auc, "Accuracy": acc, "F1": f1}
 
 def evaluar_equidad_multivariable(y_true, y_pred, grupo_sensible):
     """
