@@ -418,9 +418,8 @@ Finalmente, se incorporarán técnicas de explicabilidad basadas en \textit{SHAP
 
 
 
-
-
-\subsection{Tratamiento de la problemática 1: [nombre]}
+\subsection{Tratamiento de la problemática 1: Mitigación de Sesgo Multidimensional mediante Optimización Restringida}
+\label{subsec:mitigacion_sesgo}
 
 \begin{orientacion}
 \orientaciontitle
@@ -429,15 +428,6 @@ Finalmente, se incorporarán técnicas de explicabilidad basadas en \textit{SHAP
 
 [Descripción, formulación y justificación.]
 
-% Ejemplo de ecuación numerada:
-% \begin{equation}
-%   \min_{w} \mathcal{L}(w) \quad \text{s.a.} \quad
-%   \bigl|P(\hat{Y}=1 \mid A=a) - P(\hat{Y}=1 \mid A=b)\bigr| \leq \epsilon
-%   \label{eq:ejemplo}
-% \end{equation}
-
-\subsection{Tratamiento de la problemática 1: Mitigación de Sesgo Multidimensional mediante Optimización Restringida}
-\label{subsec:mitigacion_sesgo}
 
 La reducción del sesgo en el modelo COMPAS presenta un desafío técnico fundamental: el sesgo no es una propiedad aislada de un único atributo, sino un fenómeno sistémico que impregna múltiples dimensiones de los datos. Si bien la raza (\textit{race}) se identifica como el atributo sensible primario siguiendo la investigación de \textit{ProPublica}, factores como la edad y el historial delictivo temprano actúan como variables latentes que pueden perpetuar la discriminación incluso si se eliminan las etiquetas raciales.
 
@@ -473,6 +463,10 @@ Se ha optado por esta técnica \textit{in-processing} por su capacidad para mane
 Este enfoque no solo garantiza el cumplimiento de los estándares éticos de este estudio, sino que se alinea con los requisitos de \textbf{seguridad algorítmica y control de sesgos} exigidos por el \textit{AI Act} de la Unión Europea para sistemas de alto riesgo en la justicia penal. De este modo, la solución técnica propuesta transita de una simple predicción estadística hacia una evaluación de riesgo fundamentada en principios de justicia distributiva.
 
 \subsection{Tratamiento de la problemática 2: Explicabilidad del modelo (XAI)}
+
+Con el objetivo de mejorar la interpretabilidad del sistema de predicción, se aplicaron distintas técnicas de explicabilidad sobre el modelo baseline definido previamente. Estas técnicas permiten analizar tanto la influencia global de las variables sobre el comportamiento del clasificador como las contribuciones específicas asociadas a predicciones individuales.
+
+Dado el contexto judicial del problema, la incorporación de métodos XAI resulta especialmente relevante para comprender qué factores influyen en la estimación del riesgo de reincidencia y evaluar si las decisiones generadas por el modelo pueden interpretarse de forma transparente y consistente.
 
 \subsubsection{Explicabilidad global mediante SHAP}
 
@@ -517,7 +511,28 @@ donde \(f\) representa el modelo complejo original, \(g\) el modelo interpretabl
 La principal ventaja de LIME es su independencia respecto al modelo utilizado, permitiendo generar explicaciones locales sobre cualquier clasificador. No obstante, durante el análisis experimental se observó que las explicaciones generadas sobre variables categóricas codificadas mediante \textit{One-Hot Encoding} resultaban menos intuitivas que las obtenidas mediante SHAP, debido a la generación automática de reglas locales discretizadas. Por ello, SHAP proporcionó explicaciones visualmente más consistentes e interpretables para el contexto del problema abordado.
 
 
-\subsubsection{SHAP con dependencias entre variables}
+\subsubsection{Análisis de dependencias entre variables mediante SHAP}
+
+Una de las principales limitaciones de las técnicas de explicabilidad basadas en SHAP es que, en sus formulaciones estándar, pueden asumir independencia entre las variables de entrada. Esta hipótesis no siempre se cumple en datasets reales como COMPAS, donde atributos como la edad, el número de antecedentes o determinadas variables demográficas pueden presentar relaciones entre sí. En estos casos, la atribución de importancia a cada característica puede verse afectada, ya que el modelo puede repartir la contribución entre variables correlacionadas o asignar importancia a variables que actúan como aproximaciones indirectas de otras.
+
+Desde un punto de vista teórico, las variantes de \textit{Conditional SHAP} buscan resolver este problema sustituyendo la evaluación marginal de las variables por una evaluación condicionada a las dependencias existentes entre características. De forma simplificada, la contribución de una variable se calcula teniendo en cuenta la distribución condicional del resto de atributos:
+
+\[
+\phi_i^{cond} =
+\sum_{S \subseteq F \setminus \{i\}}
+\frac{|S|!(|F|-|S|-1)!}{|F|!}
+\left[
+\mathbb{E}(f(X) \mid X_{S \cup \{i\}} = x_{S \cup \{i\}})
+-
+\mathbb{E}(f(X) \mid X_S = x_S)
+\right]
+\]
+
+donde la diferencia principal respecto a SHAP estándar es que la contribución se estima respetando las relaciones estadísticas entre variables, en lugar de asumir que todas ellas pueden variar de forma independiente.
+
+En este trabajo no se implementó una versión completa de \textit{Conditional SHAP} basada en cópulas, ya que su aplicación requiere modelar explícitamente las distribuciones condicionales entre variables y aumenta considerablemente la complejidad del análisis. En su lugar, se emplearon \textit{SHAP dependence plots} como aproximación práctica para estudiar cómo varía la contribución de una característica en función de su propio valor y de su interacción con otras variables.
+
+Este análisis permite estudiar cómo cambia el impacto de una variable sobre la predicción y si dicho efecto depende de otras características del individuo. Por ejemplo, en el caso de \texttt{priors\_count}, se puede observar no solo su relación con el riesgo de reincidencia, sino también posibles interacciones con variables como \texttt{age} o \texttt{race}.
 
 \subsection{Protocolo de evaluación}
 
