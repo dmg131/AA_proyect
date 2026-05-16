@@ -5,14 +5,12 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import accuracy_score, f1_score, classification_report
+from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
 from fairlearn.metrics import (
     MetricFrame, 
     selection_rate, 
     false_positive_rate, 
-    false_negative_rate,
-    demographic_parity_difference,
-    equalized_odds_difference
+    false_negative_rate
 )
 from sklearn.metrics import recall_score
 
@@ -73,14 +71,18 @@ def evaluar_rendimiento(model, X_test_proc, y_test):
     
     return {"Accuracy": acc, "F1": f1}
 
-def obtener_metricas_equidad(y_true, y_pred, grupo_sensible):
-    """Genera el MetricFrame de Fairlearn desglosado por el grupo sensible."""
+def evaluar_equidad_multivariable(y_true, y_pred, grupo_sensible):
+    """
+    Genera una auditoría exhaustiva para cualquier variable o combinación.
+    Incluye Precision (PPV) para evaluar Predictive Parity.
+    """
     metrics_dict = {
-        'TPR (Recall)': recall_score,
-        'FPR (Falsos Positivos)': false_positive_rate,
+        'Accuracy': accuracy_score,
+        'Precision (PPV)': precision_score,    # Clave para Predictive Parity
+        'TPR (Recall)': recall_score,          # Clave para Equalized Odds
+        'FPR (Falsos Positivos)': false_positive_rate, # Métrica ProPublica
         'FNR (Falsos Negativos)': false_negative_rate,
-        'Selection Rate': selection_rate,
-        'Accuracy': accuracy_score
+        'Selection Rate': selection_rate       # Clave para Demographic Parity
     }
     
     mf = MetricFrame(
@@ -89,4 +91,5 @@ def obtener_metricas_equidad(y_true, y_pred, grupo_sensible):
         y_pred=y_pred,
         sensitive_features=grupo_sensible
     )
+    
     return mf
