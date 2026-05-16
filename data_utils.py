@@ -5,7 +5,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, classification_report, roc_auc_score, recall_score
 from fairlearn.metrics import (
     MetricFrame, 
     selection_rate, 
