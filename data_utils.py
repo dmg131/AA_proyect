@@ -5,7 +5,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
+from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score, roc_auc_score, classification_report
 from fairlearn.metrics import (
     MetricFrame, 
     selection_rate, 
@@ -59,21 +59,35 @@ def obtener_preprocesador():
     return preprocessor
 
 def evaluar_rendimiento(model, X_test, y_test):
-    """Calcula y devuelve las métricas de rendimiento predictivo estándar."""
+    """Calcula y devuelve las métricas de rendimiento predictivo estándar de forma segura."""
+    # El método predict siempre está disponible
     y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
     
     acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
     f1 = f1_score(y_test, y_pred)
     
-    print("Rendimiento del Modelo")
-    print(f"AUC-ROC: {auc:.4f}")
+    print("--- Rendimiento del Modelo ---")
     print(f"Accuracy: {acc:.4f}")
-    print(f"F1-Score: {f1:.4f}\n")
-    print("Reporte de Clasificación:\n", classification_report(y_test, y_pred))
+    print(f"F1-Score: {f1:.4f}")
     
-    return {"AUC": auc, "Accuracy": acc, "F1": f1}
+    metrics = {"Accuracy": acc, "F1": f1}
+    
+    # Comprobamos de manera proactiva si el modelo permite predict_proba
+    if hasattr(model, "predict_proba"):
+        try:
+            y_proba = model.predict_proba(X_test)[:, 1]
+            auc = roc_auc_score(y_test, y_proba)
+            print(f"AUC-ROC:  {auc:.4f}")
+            metrics["AUC"] = auc
+        except Exception:
+            print("AUC-ROC:  No disponible (error al extraer probabilidades)")
+    else:
+        # Esto es lo que se imprimirá al evaluar el mitigador
+        print("AUC-ROC:  No disponible para este mitigador (modelo estocástico).")
+        
+    print("\nReporte de Clasificación:\n", classification_report(y_test, y_pred))
+    
+    return metrics
 
 def evaluar_equidad_multivariable(y_true, y_pred, grupo_sensible):
     """
