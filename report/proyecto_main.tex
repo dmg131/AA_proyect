@@ -412,6 +412,8 @@ Se ha optado por esta técnica \textit{in-processing} por su capacidad para mane
 
 Este enfoque no solo garantiza el cumplimiento de los estándares éticos de este estudio, sino que se alinea con los requisitos de \textbf{seguridad algorítmica y control de sesgos} exigidos por el \textit{AI Act} de la Unión Europea para sistemas de alto riesgo en la justicia penal. De este modo, la solución técnica propuesta transita de una simple predicción estadística hacia una evaluación de riesgo fundamentada en principios de justicia distributiva.
 
+
+
 \subsection{Tratamiento de la problemática 2: Explicabilidad del modelo (XAI)}
 
 Con el objetivo de mejorar la interpretabilidad del sistema de predicción, se aplicaron distintas técnicas de explicabilidad sobre el modelo baseline definido previamente. Estas técnicas permiten analizar tanto la influencia global de las variables sobre el comportamiento del clasificador como las contribuciones específicas asociadas a predicciones individuales.
@@ -483,6 +485,8 @@ donde la diferencia principal respecto a SHAP estándar es que la contribución 
 En este trabajo no se implementó una versión completa de \textit{Conditional SHAP} basada en cópulas, ya que su aplicación requiere modelar explícitamente las distribuciones condicionales entre variables y aumenta considerablemente la complejidad del análisis. En su lugar, se emplearon \textit{SHAP dependence plots} como aproximación práctica para estudiar cómo varía la contribución de una característica en función de su propio valor y de su interacción con otras variables.
 
 Este análisis permite estudiar cómo cambia el impacto de una variable sobre la predicción y si dicho efecto depende de otras características del individuo. Por ejemplo, en el caso de \texttt{priors\_count}, se puede observar no solo su relación con el riesgo de reincidencia, sino también posibles interacciones con variables como \texttt{age} o \texttt{race}.
+
+
 
 \subsection{Protocolo de evaluación}
 
@@ -654,6 +658,163 @@ Para constatar el impacto real de este reajuste ético sobre la métrica más po
 El examen empírico de la Figura~\ref{fig:auditoria_fpr_etnia} escenifica el beneficio social inmediato de la optimización restringida. En el modelo XGBoost base, el algoritmo replicaba el sesgo sistémico tradicional, asignando una tasa de falsos positivos desproporcionada al colectivo afroamericano (penalizando con perfiles de alto riesgo a ciudadanos inocentes que en la realidad no reincidieron) en comparación con el subgrupo caucásico. 
 
 Bajo las directrices del mitigador óptimo configurado a través del Grid Search, las barras correspondientes a la Figura~\ref{fig:auditoria_fpr_etnia} plasman un aplanamiento de los errores distributivos: la tasa de castigo erróneo de la minoría afroamericana se comprime de forma sustancial, atrayendo los valores de todos los colectivos hacia la línea de la media global del sistema. Esta descompresión operativa dota al modelo final de la solvencia técnica y ética exigida por la normativa comunitaria (*AI Act*) de la Unión Europea para algoritmos de alto riesgo en el ámbito judicial, garantizando una evaluación del riesgo de reincidencia desprovista de distorsiones históricas e injusticias estructurales.
+
+
+
+
+
+
+
+
+
+
+\subsubsection{Resultados de Explicabilidad del Modelo mediante SHAP y LIME}
+
+Una vez evaluada la equidad del modelo, se analizó su comportamiento interno mediante técnicas de explicabilidad. El objetivo de este apartado no es modificar las predicciones, sino estudiar qué variables influyen más en ellas y comprobar si las decisiones del modelo pueden interpretarse de forma razonable.
+
+En primer lugar, se aplicó SHAP a nivel global sobre el conjunto de prueba. La Figura~\ref{fig:shap_summary_global} muestra las variables con mayor impacto medio en la predicción del modelo.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{Images/shap_summary_global.png}
+\caption{Resumen global SHAP del modelo XGBoost.}
+\label{fig:shap_summary_global}
+\end{figure}
+
+En la Figura~\ref{fig:shap_summary_global} se observa que el modelo concentra gran parte de su decisión en dos variables principales: \texttt{priors\_count} y \texttt{age}. Esto indica que el número de antecedentes previos y la edad son los factores que más condicionan la predicción de reincidencia. En general, un mayor número de antecedentes empuja la predicción hacia la clase positiva, mientras que una edad más alta tiende a reducir el riesgo estimado.
+
+También aparecen variables como \texttt{c\_charge\_degree\_F}, \texttt{sex\_Female}, \texttt{juv\_other\_count} y algunas variables relacionadas con la raza. Aunque su impacto es menor que el de \texttt{priors\_count} y \texttt{age}, su presencia es relevante porque permite comprobar si el modelo está utilizando información demográfica o variables sensibles como parte de su razonamiento.
+
+Para completar el análisis, se seleccionó un individuo concreto del conjunto de prueba. El caso elegido corresponde al índice interno 1505, clasificado como falso positivo: el individuo realmente no reincidió, pero el modelo predijo reincidencia con una probabilidad de 0,591. La Tabla~\ref{tab:caso_xai} resume sus características principales.
+
+\begin{table}[H]
+\centering
+\caption{Perfil del individuo seleccionado para el análisis local.}
+\label{tab:caso_xai}
+\begin{tabular}{l c}
+\hline
+\textbf{Atributo} & \textbf{Valor} \\
+\hline
+Índice interno & 1505 \\
+Índice original & 4156 \\
+Tipo de caso & Falso positivo \\
+Clase real & 0 \\
+Predicción del modelo & 1 \\
+Probabilidad estimada de reincidencia & 0,591 \\
+Raza & African-American \\
+Sexo & Male \\
+Edad & 20 \\
+Antecedentes previos & 0 \\
+Delitos juveniles graves & 0 \\
+Delitos juveniles menores & 0 \\
+Otros delitos juveniles & 0 \\
+Grado del cargo & F \\
+\hline
+\end{tabular}
+\end{table}
+
+Este caso resulta especialmente interesante porque el modelo asigna riesgo de reincidencia a una persona que finalmente no reincidió. Además, se trata de un individuo afroamericano, joven y sin antecedentes previos registrados. Por tanto, permite analizar si la decisión del modelo se apoya en factores claramente justificables o si aparecen señales más problemáticas.
+
+La Figura~\ref{fig:shap_local_waterfall_idx1505} muestra la explicación local mediante SHAP. El gráfico parte del valor base del modelo y muestra cómo cada variable aumenta o reduce la predicción final.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{Images/shap_local_waterfall_idx1505.png}
+\caption{Explicación local SHAP para el individuo 1505.}
+\label{fig:shap_local_waterfall_idx1505}
+\end{figure}
+
+En este caso, la variable \texttt{age} es la que más empuja la predicción hacia la reincidencia. Esto significa que el modelo interpreta la baja edad del individuo como una señal de mayor riesgo. En cambio, \texttt{priors\_count} reduce la predicción, ya que el individuo no tiene antecedentes previos. Sin embargo, ese efecto protector no es suficiente para evitar que la predicción final supere el umbral de clasificación positiva.
+
+Este resultado es importante porque muestra que el falso positivo no se debe a un historial delictivo adulto previo, sino principalmente al peso que el modelo da a la juventud del individuo y a otros factores secundarios. En un contexto judicial, esta explicación sería necesaria para entender por qué una persona sin antecedentes acaba siendo clasificada como perfil de riesgo.
+
+Como contraste, se aplicó LIME sobre el mismo individuo. La Figura~\ref{fig:lime_local_idx1505} muestra las variables y reglas locales que más influyen en la predicción.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{Images/lime_local_idx1505.png}
+\caption{Explicación local LIME para el individuo 1505.}
+\label{fig:lime_local_idx1505}
+\end{figure}
+
+La explicación obtenida con LIME coincide en parte con SHAP, ya que vuelve a destacar la edad como uno de los factores principales. No obstante, LIME resulta algo menos claro en este caso, porque trabaja con variables transformadas y genera reglas locales que no siempre son tan directas de interpretar. Por tanto, SHAP ofrece una explicación más visual y más sencilla de relacionar con las variables originales del problema.
+
+Después del análisis local, se estudiaron varias dependencias mediante SHAP. La Figura~\ref{fig:shap_dependence_priors_age} muestra la relación entre \texttt{priors\_count} y su contribución a la predicción, usando la edad como variable de color.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_priors_age.png}
+\caption{Dependencia SHAP de \texttt{priors\_count} con interacción de \texttt{age}.}
+\label{fig:shap_dependence_priors_age}
+\end{figure}
+
+Se observa una relación positiva clara: cuando aumenta el número de antecedentes previos, también aumenta la contribución SHAP hacia la reincidencia. En los valores bajos, la variable aporta poco o incluso reduce el riesgo estimado. En cambio, a partir de varios antecedentes, su efecto pasa a ser claramente positivo.
+
+La Figura~\ref{fig:shap_dependence_race_priors} analiza la variable \texttt{race\_African-American}, coloreada por \texttt{priors\_count}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_race_priors.png}
+\caption{Dependencia SHAP de \texttt{race\_African-American} con interacción de \texttt{priors\_count}.}
+\label{fig:shap_dependence_race_priors}
+\end{figure}
+
+La contribución directa de la variable racial es menor que la de los antecedentes o la edad, pero no es completamente nula. Los individuos codificados como afroamericanos tienden a presentar una contribución ligeramente positiva, mientras que en el resto de grupos suele ser menor o negativa. Este resultado no demuestra por sí solo discriminación directa, pero sí justifica que la raza se mantenga como variable a vigilar dentro de la auditoría del modelo.
+
+La Figura~\ref{fig:shap_dependence_age_priors} muestra el comportamiento de la edad, coloreada por \texttt{priors\_count}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_age_priors.png}
+\caption{Dependencia SHAP de \texttt{age} con interacción de \texttt{priors\_count}.}
+\label{fig:shap_dependence_age_priors}
+\end{figure}
+
+En este caso, la relación es negativa. Los individuos más jóvenes presentan valores SHAP positivos, por lo que la edad aumenta el riesgo estimado. A medida que la edad crece, la contribución se vuelve negativa y reduce la predicción de reincidencia. Este patrón ayuda a entender el caso local anterior, ya que el individuo 1505 tiene solo 20 años y esa característica tiene un peso importante en su clasificación.
+
+Por último, la Figura~\ref{fig:shap_dependence_sex_priors} muestra la variable \texttt{sex\_Female}, también coloreada por \texttt{priors\_count}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_sex_priors.png}
+\caption{Dependencia SHAP de \texttt{sex\_Female} con interacción de \texttt{priors\_count}.}
+\label{fig:shap_dependence_sex_priors}
+\end{figure}
+
+Cuando \texttt{sex\_Female} toma valor 1, la contribución SHAP tiende a ser negativa. Esto indica que el modelo asocia la categoría femenina con una reducción del riesgo estimado. En cambio, cuando la variable toma valor 0, la contribución suele ser ligeramente positiva. Aunque su efecto es menor que el de \texttt{priors\_count} y \texttt{age}, muestra que el modelo también incorpora diferencias demográficas en sus predicciones.
+
+En conjunto, los resultados de explicabilidad muestran que el modelo basa sus decisiones principalmente en variables coherentes con el problema, como los antecedentes previos y la edad. Sin embargo, también aparecen contribuciones asociadas a variables demográficas y sensibles, por lo que la interpretación del modelo debe hacerse junto con las métricas de equidad. De este modo, SHAP y LIME no sustituyen al análisis de fairness, pero ayudan a entender cómo se construyen las predicciones y por qué ciertos casos pueden resultar problemáticos.
+
+
+\newpage
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 % ============================================================
 \section{Discusión}
 \label{sec:discusion}
@@ -689,7 +850,7 @@ Bajo las directrices del mitigador óptimo configurado a través del Grid Search
 
 [Conclusiones aquí: 3--4 párrafos.]
 
-
+\newpage
 % ============================================================
 %  REFERENCIAS
 % ============================================================
