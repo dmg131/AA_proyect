@@ -804,6 +804,17 @@ En conjunto, los resultados de explicabilidad muestran que el modelo basa sus de
 [Reflexión sobre las implicaciones reales del sistema. ?`Cómo afectan los resultados a los grupos implicados? ?`Qué obligaciones legales aplicarían bajo el RGPD o el AI Act?]
 
 
+
+
+
+
+
+
+
+
+
+
+
 % ============================================================
 \section{Conclusiones}
 \label{sec:conclusiones}
@@ -816,7 +827,34 @@ En conjunto, los resultados de explicabilidad muestran que el modelo basa sus de
 
 [Conclusiones aquí: 3--4 párrafos.]
 
+
+En este trabajo hemos abordado la predicción de reincidencia criminal sobre el dataset COMPAS desde una perspectiva técnica y ética. El objetivo no ha sido únicamente construir un modelo capaz de predecir la reincidencia, sino analizar si sus decisiones podían considerarse justas e interpretables en un contexto judicial. Para ello, hemos partido de un pipeline reproducible de preprocesamiento y hemos seleccionado XGBoost como modelo baseline, ya que ofrecía el mejor rendimiento entre los modelos evaluados. A partir de este punto, el trabajo se ha centrado en estudiar dos aspectos fundamentales: la equidad algorítmica y la explicabilidad del modelo.
+
+\vspace{0.3cm}
+
+En relación con la equidad, los resultados han mostrado que mejorar la justicia del modelo implica asumir un cierto compromiso con el rendimiento predictivo. Al aplicar la mitigación mediante \textit{Exponentiated Gradient} bajo la restricción de \textit{Equalized Odds}, hemos conseguido reducir de forma notable la brecha de disparidad racial, especialmente en términos de errores entre grupos. Esta mejora no ha sido gratuita, ya que la accuracy y el recall han disminuido ligeramente. Sin embargo, la pérdida ha sido moderada frente a la reducción obtenida en las métricas de fairness, por lo que el modelo mitigado representa un equilibrio más adecuado para un entorno de alto impacto como el judicial.
+
+\vspace{0.3cm}
+
+Por otro lado, el análisis de explicabilidad ha permitido entender mejor cómo se construyen las predicciones del modelo. A nivel global, SHAP ha mostrado que las variables más influyentes son \texttt{priors\_count} y \texttt{age}, lo cual resulta coherente con el problema, ya que los antecedentes previos y la edad están directamente relacionados con el riesgo de reincidencia. A nivel local, el estudio del individuo 1505 ha sido especialmente útil, al tratarse de un falso positivo: una persona que no reincidió, pero fue clasificada como reincidente. En este caso, SHAP y LIME han permitido observar que la juventud del individuo tuvo un peso importante en la predicción, incluso cuando no presentaba antecedentes previos.
+
+\vspace{0.3cm}
+
+Como líneas futuras, resulta necesario avanzar hacia sistemas de decisión automatizada que no solo busquen mejorar la precisión, sino también garantizar un trato más justo y transparente para todos los individuos. A medida que estas herramientas se utilicen con más frecuencia en ámbitos sensibles, será cada vez más importante automatizar también los procesos de auditoría, incorporando controles de fairness y explicabilidad desde el propio ciclo de desarrollo del modelo. En este sentido, el futuro de estos sistemas no debería centrarse únicamente en predecir mejor, sino en construir modelos capaces de justificar sus decisiones, detectar posibles desigualdades y reducir el riesgo de reproducir sesgos históricos.
+
 \newpage
+
+
+
+
+
+
+
+
+
+
+
+
 % ============================================================
 %  REFERENCIAS
 % ============================================================
