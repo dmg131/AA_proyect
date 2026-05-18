@@ -565,7 +565,11 @@ Por ello, este estudio adopta el criterio de \textbf{Equalized Odds} (Igualdad d
     \end{equation}
     Un valor cercano a cero indica que el modelo es igual de preciso e igual de erróneo con todos los grupos \cite{karimi2021enhancing}.
 
-    \item \textbf{FPR Disparity Ratio:} Actúa como la métrica de auditoría forense. Se calcula como el cociente entre la tasa de falsos positivos del grupo desfavorecido frente al grupo privilegiado. Un ratio superior a 1.25 indica un \textit{impacto dispar} significativo, revelando que el sistema etiqueta erróneamente como reincidentes a miembros de un grupo con una frecuencia desproporcionada \cite{angwin2016machine}.
+    \item \textbf{Demographic Parity Difference:} Actúa como indicador de la equidad distributiva directa en las asignaciones de riesgo. Mide la diferencia absoluta máxima en la tasa de selección (la proporción de individuos clasificados como propensos a la reincidencia) entre cualquier par de grupos demográficos. Su objetivo es evaluar la función:
+    \begin{equation}
+        \max_{a,b \in \mathcal{A}} |P(\hat{y}=1 \mid A=a) - P(\hat{y}=1 \mid A=b)|
+    \end{equation}
+    Un valor cercano a cero representa el cumplimiento empírico de la paridad demográfica pura, donde la probabilidad de recibir una etiqueta punitiva es estadísticamente independiente de la pertenencia grupal \cite{karimi2021enhancing}.
 \end{itemize}
 
 % ============================================================
