@@ -323,10 +323,12 @@ Dada la naturaleza del problema, la estratificación no solo se realizó sobre l
 
 \subsubsection{Tratamiento de Valores Ausentes (Imputación)}
 
-A pesar del filtrado previo, se implementó una estrategia de imputación univariante para asegurar la integridad del \textit{pipeline} ante datos no observados en producción:
+La estrategia para el manejo de valores nulos se diseñó en dos fases complementarias, equilibrando el rigor ético durante el entrenamiento con la resiliencia técnica en producción. En primera instancia, durante la carga y limpieza inicial de los datos, se aplicó un filtrado estricto mediante la eliminación de registros incompletos (\textit{listwise deletion} o \texttt{dropna}). Esta decisión metodológica garantiza que el modelo se ajuste exclusivamente sobre historiales fácticos y completos, alineándose con los estándares de \textit{ProPublica}, ya que la reconstrucción sintética de datos judiciales y perfiles penales resulta éticamente inaceptable.
+
+No obstante, como salvaguarda de programación defensiva para la fase de inferencia (en caso de que el sistema reciba datos futuros con campos en blanco), se integró una estrategia de imputación univariante de respaldo dentro del \textit{ColumnTransformer}. Si el \textit{pipeline} detecta valores ausentes en producción, evitará un fallo crítico del sistema aplicando las siguientes reglas de emergencia:
 \begin{itemize}
-    \item \textbf{Variables numéricas:} Se utilizó la imputación por la mediana. Se optó por esta medida de tendencia central en lugar de la media debido a la asimetría observada en variables como \textit{priors\_count} y \textit{juv\_fel\_count}, siendo la mediana un estimador más robusto frente a valores atípicos.
-    \item \textbf{Variables categóricas:} Se empleó la imputación por el valor más frecuente (moda), garantizando la consistencia semántica de categorías como \textit{age\_cat} o \textit{c\_charge\_degree}.
+    \item \textbf{Variables numéricas:} Se utiliza la imputación por la mediana. Se optó por esta medida de tendencia central debido a la fuerte asimetría observada en variables como \textit{priors\_count} y \textit{juv\_fel\_count}, actuando como un estimador robusto frente a valores atípicos.
+    \item \textbf{Variables categóricas:} Se emplea la imputación por el valor más frecuente (moda), garantizando la consistencia semántica de categorías como \textit{c\_charge\_degree}.
 \end{itemize}
 
 \subsubsection{Codificación de Variables Categóricas}
@@ -354,68 +356,16 @@ Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{Co
 \textit{El \textit{baseline} es el punto de referencia contra el que compararás las técnicas aplicadas. Elige un modelo estándar apropiado para la tarea y justifica su elección.}
 \end{orientacion}
 
-Para establecer un punto de referencia empírico riguroso en este estudio, se ha seleccionado un ensamblado basado en el algoritmo \textit{Extreme Gradient Boosting} (XGBoost) como modelo \textit{baseline}. Este clasificador servirá como el techo predictivo en su estado puro (sin restricciones algorítmicas de equidad). Su propósito metodológico se fundamente en dos aspectos: por un lado, actúa como representante de las "cajas negras" actuales utilizadas en la industria. Por otro, permite cuantificar posteriormente el impacto de las técnicas de mitigación de sesgo, midiendo cuánta utilidad predictiva (AUC-ROC o \textit{Accuracy}) se sacrifica, si la hubiese, para lograr la Paridad Demográfica.
+Para establecer un punto de referencia empírico riguroso en este estudio, se ha seleccionado un ensamblado basado en el algoritmo \textit{Extreme Gradient Boosting} (XGBoost) como modelo \textit{baseline}. Este clasificador servirá como el techo predictivo en su estado puro (sin restricciones algorítmicas de equidad). Su propósito metodológico se fundamenta en dos aspectos: por un lado, actúa como representante de las "cajas negras" actuales utilizadas en la industria. Por otro, permite cuantificar el impacto de las técnicas de mitigación de sesgo, midiendo cuánta utilidad predictiva (AUC-ROC o \textit{Accuracy}) se sacrifica, si la hubiese, para lograr la Paridad Demográfica.
 
-La elección de XGBoost se justifica fundamentalmente por dos vías: empírica y metodológica.
-
-\textbf{Justificación empírica:} 
-De forma preliminar a la elección del modelo base, se llevó a cabo una evaluación cruzada (\textit{Grid Search} con \textit{Stratified 5-Fold CV}) contrastando XGBoost contra otras arquitecturas estándar ampliamente documentadas en la literatura criminológica (Regresión Logística, Árboles de Decisión, \textit{Random Forest} y Máquinas de Vectores de Soporte). Los resultados empíricos demostraron que XGBoost presenta la mayor capacidad de generalización para este conjunto de datos específico, consolidándose como el algoritmo con mayor poder predictivo (medido a través de la métrica AUC-ROC).
-
-
-\begin{table}[H]
-\centering
-\caption{Comparativa de rendimiento predictivo de los modelos evaluados mediante Validación Cruzada Estratificada (5-Folds). Los valores óptimos para cada métrica se destacan en negrita.}
-\label{tab:comparativa_modelos}
-\small
-\begin{tabular}{lccccc}
-\toprule
-\textbf{Modelo} & \textbf{AUC-ROC} & \textbf{Accuracy} & \textbf{F1-Score} & \textbf{Precision} & \textbf{Recall} \\
-\midrule
-XGBoost & \textbf{0.7406} & 0.6912 & 0.6414 & \textbf{0.6807} & 0.6068 \\
-Random Forest & 0.7370 & \textbf{0.6921} & \textbf{0.6529} & 0.6710 & 0.6363 \\
-SVM & 0.7315 & 0.6845 & 0.6315 & 0.6746 & 0.5941 \\
-Regresión Logística & 0.7305 & 0.6787 & 0.6425 & 0.6514 & 0.6343 \\
-Árbol de Decisión & 0.7271 & 0.6870 & 0.6496 & 0.6632 & \textbf{0.6374} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-
-\textbf{Justificación teórico-metodológica:}
-Más allá de su rendimiento numérico, la arquitectura de XGBoost resulta excepcionalmente adecuada para modelar la reincidencia, que son datos tabulares de alta complejidad, por las siguientes razones:
+Más allá de su rendimiento numérico (cuya evaluación empírica se detalla en la Sección \ref{sec:resultados}), la arquitectura de XGBoost resulta excepcionalmente adecuada desde un punto de vista teórico-metodológico para modelar la reincidencia por las siguientes razones:
 
 \begin{itemize}
-    \item \textbf{Gestión de interacciones no lineales:} A diferencia de los modelos lineales estadísticos tradicionales, los ensamblados basados en árboles de decisión (\textit{Tree-based ensembles}) pueden capturar interacciones paramétricas complejas de forma nativa (por ejemplo, el efecto cruzado entre la edad temprana y un alto número de delitos juveniles previos).
-    \item \textbf{Robustez frente al ruido humano (\textit{Overfitting}):} Los datos derivados del comportamiento humano y de la administración de justicia penal poseen un nivel extremo de ruido estocástico. XGBoost proporciona mecanismos avanzados de regularización (como el submuestreo drástico de filas y columnas por árbol, y el control estricto de la profundidad máxima). Esto permitió, durante la optimización, forzar a la arquitectura a crear un bosque de árboles "débiles y simples" que evita la memorización de casos atípicos o historiales anecdóticos.
+    \item \textbf{Gestión de interacciones no lineales:} A diferencia de los modelos lineales estadísticos tradicionales, los ensamblados basados en árboles de decisión pueden capturar interacciones paramétricas complejas de forma nativa (por ejemplo, el efecto cruzado entre la edad temprana y un alto número de delitos juveniles previos).
+    \item \textbf{Robustez frente al ruido humano (\textit{Overfitting}):} Los datos derivados del comportamiento humano y de la administración de justicia penal poseen un nivel extremo de ruido estocástico. XGBoost proporciona mecanismos avanzados de regularización. Esto forzó a la arquitectura a crear un bosque de árboles "débiles y simples" que evita la memorización de casos atípicos o historiales anecdóticos.
 \end{itemize}
 
 En definitiva, este modelo \textit{baseline} representa fielmente el estado del arte predictivo: una herramienta altamente eficaz en la minimización del error de clasificación, pero que, sin un marco de supervisión ética activa, hereda y amplifica silenciosamente las disparidades raciales codificadas en los datos de entrada.
-
-
-[Descripción del modelo \textit{baseline} y justificación.]
-
-\subsubsection{Selección del modelo}
-
-Como modelo baseline se seleccionó \textit{XGBoost} (\textit{Extreme Gradient Boosting}), un algoritmo de aprendizaje supervisado basado en conjuntos de árboles de decisión potenciados mediante \textit{gradient boosting}. La elección de este modelo se fundamenta principalmente en su amplio uso dentro del estado del arte en problemas de clasificación tabular y, en particular, en trabajos relacionados con predicción de reincidencia y evaluación de riesgo criminal.
-
-Este tipo de arquitectura resulta especialmente adecuada en el dataset COMPAS, ya que permite capturar relaciones no lineales entre variables como \texttt{age}, \texttt{priors\_count} o \texttt{juv\_fel\_count}, además de ofrecer un buen equilibrio entre capacidad predictiva y robustez frente al sobreajuste.
-
-\subsubsection{Integración en el pipeline de aprendizaje}
-
-El modelo fue integrado dentro de un \textit{Pipeline} de Scikit-Learn junto con el \textit{ColumnTransformer} definido durante la fase de preprocesamiento. Esta estructura permite encapsular en un único flujo todas las transformaciones aplicadas sobre los datos y el entrenamiento del clasificador.
-
-La utilización de un pipeline unificado garantiza que las transformaciones aprendidas durante el entrenamiento se apliquen de forma consistente tanto en entrenamiento como en inferencia, evitando problemas de \textit{data leakage}. Además, esta arquitectura facilita la reproducibilidad experimental y simplifica la posterior incorporación de técnicas específicas de fairness y XAI sobre el modelo baseline.
-
-\subsubsection{Evaluación inicial del modelo}
-
-La evaluación inicial del modelo baseline se realizará mediante métricas clásicas de clasificación binaria, principalmente \textit{Accuracy} y \textit{AUC-ROC}, con el objetivo de medir la capacidad predictiva general del sistema.
-
-La métrica \textit{Accuracy} permitirá estimar el porcentaje total de predicciones correctas realizadas por el modelo sobre el conjunto de prueba. No obstante, dado que esta métrica puede verse afectada por la distribución de clases, se complementará con \textit{AUC-ROC} (\textit{Area Under the ROC Curve}), la cual evalúa la capacidad discriminativa del clasificador independientemente del umbral de decisión seleccionado.
-
-Adicionalmente, se analizará el comportamiento del modelo respecto a métricas de \textit{fairness}, prestando especial atención al atributo sensible \texttt{race}. En este contexto, resulta especialmente relevante estudiar el equilibrio entre capacidad predictiva y equidad algorítmica, ya que maximizar la detección de reincidentes puede incrementar las tasas de falsos positivos sobre determinados grupos demográficos.
-
-Finalmente, se incorporarán técnicas de explicabilidad basadas en \textit{SHAP} para estudiar cómo influyen las distintas variables en las predicciones generadas por el modelo baseline, permitiendo obtener una interpretación tanto global como local del comportamiento del sistema.
-
 
 
 \subsection{Tratamiento de la problemática 1: Mitigación de Sesgo Multidimensional mediante Optimización Restringida}
@@ -577,62 +527,52 @@ Por ello, este estudio adopta el criterio de \textbf{Equalized Odds} (Igualdad d
 \label{sec:resultados}
 % ============================================================
 
-\begin{orientacion}
-\orientaciontitle
-\textit{Esta sección presenta los resultados sin interpretarlos (la interpretación va en la Sección~\ref{sec:discusion}). Usa tablas comparativas que permitan ver claramente la diferencia entre el \textit{baseline} y cada intervención. Reporta siempre media $\pm$ desviación estándar cuando uses validación cruzada.}
-\end{orientacion}
-
 \subsection{Configuración experimental}
 
-[Entorno de experimentación: versiones de librerías principales y semilla aleatoria fijada.]
+Los experimentos se han desarrollado en un entorno de programación Python, utilizando el ecosistema estándar de análisis de datos (\texttt{pandas}, \texttt{numpy}) y la librería \texttt{scikit-learn} para el modelado y evaluación cruzada. Para garantizar la reproducibilidad exacta de los particionados, imputaciones y optimización de hiperparámetros, se ha fijado una semilla aleatoria global.
 
-\begin{lstlisting}[caption={Semilla aleatoria y versiones principales.}]
+\begin{lstlisting}[caption={Semilla aleatoria y dependencias principales en el entorno de experimentación.}, language=Python]
 import numpy as np
+import sklearn
+import xgboost
+import fairlearn
+
+# Fijar semilla para reproducibilidad
 SEED = 42
 np.random.seed(SEED)
-# sklearn.__version__ = X.X.X
+
+# Versiones de dependencias clave
+# scikit-learn == 1.3.0
+# xgboost == 2.0.0
+# fairlearn == 0.9.0
 \end{lstlisting}
 
-\subsection{Resultados comparativos}
+\subsection{Selección empírica del modelo \textit{baseline}}
+\label{subsec:resultados_baseline}
 
-La Tabla~\ref{tab:resultados} compara el rendimiento del \textit{baseline} con los modelos que incorporan las técnicas para cada problemática.
+De forma preliminar a la aplicación de técnicas de \textit{Fairness}, se llevó a cabo una evaluación cruzada exhaustiva (\textit{Grid Search} con \textit{Stratified 5-Fold CV}) para determinar el límite predictivo del conjunto de datos. Se contrastó el algoritmo XGBoost contra otras cuatro arquitecturas estándar documentadas en la literatura criminológica: Regresión Logística, Árboles de Decisión, \textit{Random Forest} y Máquinas de Vectores de Soporte (SVM). 
+
+Como se observa en la Tabla~\ref{tab:comparativa_modelos}, los resultados empíricos demostraron que XGBoost presenta la mayor capacidad de generalización. Al alcanzar el máximo valor en la métrica principal de evaluación (AUC-ROC de $0.7406$), se consolidó formalmente como el modelo \textit{baseline} del estudio.
 
 \begin{table}[H]
 \centering
-\caption{Comparativa de resultados (media $\pm$ desv. estándar, validación cruzada 5~\textit{folds}).}
-\label{tab:resultados}
+\caption{Comparativa de rendimiento predictivo de los modelos evaluados mediante Validación Cruzada Estratificada (5-Folds). Los valores óptimos para cada métrica se destacan en negrita.}
+\label{tab:comparativa_modelos}
 \small
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular}{lccccc}
 \toprule
-\textbf{Modelo / Configuración} & \textbf{AUC-ROC} & \textbf{F1} & \textbf{Métrica específica} & \textbf{Tiempo (s)} \\
+\textbf{Modelo} & \textbf{AUC-ROC} & \textbf{Accuracy} & \textbf{F1-Score} & \textbf{Precision} & \textbf{Recall} \\
 \midrule
-\textit{Baseline}        & $0.XX \pm 0.XX$ & $0.XX \pm 0.XX$ & --- & \\
-+ Problemática 1     & $0.XX \pm 0.XX$ & $0.XX \pm 0.XX$ & $0.XX$ & \\
-+ Problemática 2     & $0.XX \pm 0.XX$ & $0.XX \pm 0.XX$ & $0.XX$ & \\
+XGBoost & \textbf{0.7406} & 0.6912 & 0.6414 & \textbf{0.6807} & 0.6068 \\
+Random Forest & 0.7370 & \textbf{0.6921} & \textbf{0.6529} & 0.6710 & 0.6363 \\
+SVM & 0.7315 & 0.6845 & 0.6315 & 0.6746 & 0.5941 \\
+Regresión Logística & 0.7305 & 0.6787 & 0.6425 & 0.6514 & 0.6343 \\
+Árbol de Decisión & 0.7271 & 0.6870 & 0.6496 & 0.6632 & \textbf{0.6374} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Resultados específicos por problemática}
-
-[Figuras o tablas específicas de cada problemática: \textit{summary plot} de SHAP, curva privacidad--utilidad, comparativa de métricas de \textit{fairness}, etc.]
-
-\begin{figure}[H]
-\centering
-% \includegraphics[width=0.7\textwidth]{figuras/resultado_p1.pdf}
-\textit{[Insertar figura específica de la problemática 1.]}
-\caption{[Descripción del resultado de la problemática 1.]}
-\label{fig:resultado_p1}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-% \includegraphics[width=0.7\textwidth]{figuras/resultado_p2.pdf}
-\textit{[Insertar figura específica de la problemática 2.]}
-\caption{[Descripción del resultado de la problemática 2.]}
-\label{fig:resultado_p2}
-\end{figure}
-
 \subsubsection{Evaluación de Equidad Algorítmica y Mitigación In-Processing con Ajuste Clínico de Tolerancia}
 \label{subsubsec:resultados_fairness}
 
