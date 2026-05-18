@@ -47,7 +47,7 @@ def obtener_preprocesador():
 
     categorical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('onehot', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False))
+        ('onehot', OneHotEncoder(handle_unknown='ignore', drop=None , sparse_output=False))
     ])
 
     preprocessor = ColumnTransformer(
