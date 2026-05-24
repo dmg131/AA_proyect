@@ -179,7 +179,7 @@ De este modo, la tarea no se limita a maximizar el rendimiento predictivo (preci
 
 \subsection{Dataset}
 
-La Tabla~\ref{tab:dataset} resume las características principales del \textit{dataset} utilizado.
+Los datos utilizados en este trabajo proceden del \textit{dataset} \textit{COMPAS Recidivism}, publicado por ProPublica en 2016 a raíz de su investigación sobre el sistema de evaluación de riesgo \textit{Correctional Offender Management Profiling for Alternative Sanctions}, desarrollado por la empresa Northpointe (actualmente Equivant). El conjunto recoge registros administrativos del condado de Broward (Florida) correspondientes a personas fichadas entre 2013 y 2014, junto con su seguimiento posterior. La unidad de observación es, por tanto, un individuo en el momento del fichaje policial, y la etiqueta \texttt{two\_year\_recid} indica la existencia de un nuevo \emph{rearresto} dentro de los dos años siguientes, no necesariamente una condena firme; este matiz, aparentemente menor, es relevante porque acopla la variable objetivo al comportamiento del propio sistema policial que generó los datos. La Tabla~\ref{tab:dataset} resume las características principales del \textit{dataset}.
 
 \begin{table}[H]
 \centering
@@ -200,6 +200,10 @@ Licencia                  & Open Data / Dominio público. \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+De las 53 variables originales se retuvieron 13 atributos que pueden agruparse en cuatro bloques funcionales: (i) \textbf{demográficos}, con \texttt{sex}, \texttt{age}, \texttt{age\_cat} y \texttt{race}, donde esta última desempeña el papel de atributo sensible $A$ definido en la Sección~3.1; (ii) \textbf{historial delictivo adulto y juvenil}, con \texttt{priors\_count}, \texttt{juv\_fel\_count}, \texttt{juv\_misd\_count} y \texttt{juv\_other\_count}; (iii) \textbf{caracterización del cargo actual}, con \texttt{c\_charge\_degree} y \texttt{c\_charge\_desc}, que distinguen entre delitos graves (\textit{felony}) y menores (\textit{misdemeanor}); y (iv) \textbf{salida del sistema COMPAS original}, con \texttt{decile\_score} y \texttt{score\_text}, conservadas exclusivamente como referencia para auditar el sesgo del sistema original frente al modelo propio (Sección~3.3) y excluidas del conjunto de \textit{features} de entrenamiento para evitar fugas de información.
+
+Finalmente, conviene destacar que el \textit{dataset} no fue recolectado en el marco de un estudio académico, sino reconstruido por periodistas a partir de registros públicos de la administración judicial. Esta procedencia explica tanto su valor como referente empírico para la literatura de \textit{fairness} como algunas de las limitaciones que se discuten posteriormente (Sección~6).
 
 \subsection{Análisis exploratorio (EDA)}
 
