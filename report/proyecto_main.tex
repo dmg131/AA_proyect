@@ -74,17 +74,19 @@
 % ============================================================
 
 \title{
-    \textbf{[Título del trabajo]}\\[4pt]
-    \large [Subtítulo opcional]
+    \textbf{Predicción de Reincidencia Criminal bajo Restricciones de Equidad y Explicabilidad Post-Hoc}\\[4pt]
+    \large Evaluación Crítica y Mitigación de Sesgos Raciales sobre el Dataset COMPAS mediante Optimización Restringida
 }
 
 \author{
-    \textbf{[Nombre Apellido1]}\thanks{\texttt{[email1@alu.ua.es]}}
-    \quad
-    \textbf{[Nombre Apellido2]}\thanks{\texttt{[email2@alu.ua.es]}}
-    \quad
-    \textbf{[Nombre Apellido3]}\thanks{\texttt{[email3@alu.ua.es]}}
-    \\[4pt]
+    \textbf{Carlos Vidal Rodríguez}\thanks{\texttt{[cvr33@alu.ua.es]}}
+    \qquad
+    \textbf{David Martínez Gómez}\thanks{\texttt{[dmg131@alu.ua.es]}}
+    \\[10pt]
+    \textbf{Pau Mateo Lillo}\thanks{\texttt{[pml75@alu.ua.es]}}
+    \qquad
+    \textbf{Stanislav Gatin}\thanks{\texttt{[sg121@alu.ua.es]}}
+    \\[16pt]
     \small Grado en Ingeniería en Inteligencia Artificial
     --- Escuela Politécnica Superior, Universidad de Alicante\\
     \small Aprendizaje Avanzado --- Curso 2025/2026
@@ -102,17 +104,11 @@
 % Abstract 
 
 \begin{abstract}
-\textit{Resumen del trabajo en 150--250 palabras. Debe incluir:
-(1)~el problema abordado y su relevancia real,
-(2)~el \textit{dataset} utilizado,
-(3)~las problemáticas identificadas y las técnicas aplicadas,
-(4)~los resultados principales.
-\textbf{Escríbelo al final, una vez completado el trabajo.}}
+\textit{Este trabajo aborda la problemática de la predicción automatizada del riesgo de reincidencia criminal en el sistema judicial penal y su impacto directo en los derechos fundamentales. Utilizando el conjunto de datos COMPAS de ProPublica, se identifica y cuantifica la presencia de sesgos raciales sistémicos e indirectos inherentes a las arquitecturas predictivas tradicionales de caja negra. Para resolver este desafío, se propone un pipeline reproducible basado en el algoritmo XGBoost como modelo baseline (AUC-ROC de 0.7406), sobre el cual se aplican técnicas de mitigación in-processing mediante el algoritmo de Reducción de Gradiente Exponencial bajo restricciones de igualdad de probabilidades (Equalized Odds). Los resultados experimentales demuestran que es posible contraer la brecha de Equalized Odds racial en un 68.35\% (pasando de 0.2812 a 0.0890) asumiendo una degradación controlada de la exactitud global de apenas el 1.68\%. Adicionalmente, el comportamiento interno del clasificador es auditado de manera global y local mediante técnicas de explicabilidad post-hoc (SHAP y LIME), analizando críticamente el peso de variables demográficas y desglosando la lógica algorítmica detrás de falsos positivos específicos. El sistema final proporciona un marco equilibrado alineado con los estándares éticos y los requisitos de gobernanza de la Ley de Inteligencia Artificial de la Unión Europea.}
 \end{abstract}
 
 \smallskip
-\noindent\textbf{Palabras clave:} aprendizaje automático, [problemática 1], [problemática 2], [dataset], [otra palabra clave].
-
+\noindent\textbf{Palabras clave:} aprendizaje automático, equidad algorítmica, explicabilidad post-hoc, COMPAS, XGBoost, SHAP.
 \tableofcontents
 \newpage
 
@@ -120,11 +116,6 @@
 % ============================================================
 \section{Introducción}
 % ============================================================
-
-\begin{orientacion}
-\orientaciontitle
-\textit{La introducción debe responder a cuatro preguntas: (1)~?`Cuál es el problema y por qué es relevante? (2)~?`Qué implicaciones éticas, sociales o legales tiene? (3)~?`Qué se propone hacer este trabajo? (4)~?`Cómo se organiza el resto del documento? No es un resumen del trabajo, sino una motivación y contextualización.}
-\end{orientacion}
 
 En los últimos años, el uso de modelos de aprendizaje automático en contextos de alto impacto social ha crecido de forma significativa, especialmente en áreas relacionadas con la toma de decisiones públicas. Uno de los ámbitos más sensibles es el sistema judicial, donde algoritmos de predicción se utilizan o se proponen como herramientas de apoyo para estimar la probabilidad de reincidencia de individuos dentro del sistema penal. Estos sistemas pueden influir en decisiones críticas como la concesión de libertad condicional, la asignación de recursos penitenciarios o la participación en programas de rehabilitación.
 
@@ -134,13 +125,6 @@ En este contexto, el dataset \textit{COMPAS Recidivism} de ProPublica se ha conv
 
 El presente proyecto tiene como objetivo desarrollar un modelo de aprendizaje automático para la predicción de reincidencia, acompañado de un análisis crítico de sus implicaciones éticas. En particular, se abordarán dos problemáticas principales: la detección y evaluación de sesgos en las predicciones mediante métricas de equidad, y la interpretabilidad del modelo mediante técnicas de explicabilidad (\textit{XAI}), como \textit{SHAP} (\textit{SHapley Additive exPlanations}). De este modo, se busca no solo optimizar el rendimiento del modelo, sino también evaluar su transparencia, justicia y viabilidad en contextos judiciales reales.
 
-El resto del artículo se organiza como sigue.
-La Sección~\ref{sec:related} revisa el trabajo relacionado.
-La Sección~\ref{sec:datos} describe el \textit{dataset} y el análisis exploratorio.
-La Sección~\ref{sec:metodologia} detalla la metodología.
-La Sección~\ref{sec:resultados} presenta los resultados experimentales.
-La Sección~\ref{sec:discusion} discute las implicaciones.
-La Sección~\ref{sec:conclusiones} concluye el trabajo.
 
 % ============================================================
 \section{Trabajo Relacionado}
@@ -178,11 +162,6 @@ Para abordar este desafío, la literatura reciente propone extensiones de \texti
 
 \subsection{Definición formal de la tarea}
 
-\begin{orientacion}
-\orientaciontitle
-\textit{Define formalmente la tarea de aprendizaje: tipo de tarea (clasificación, regresión\ldots), espacio de entrada y salida, y función objetivo. Por ejemplo: dado un vector de \textit{features} $\bm{x} \in \mathbb{R}^d$, aprender $f\colon \mathbb{R}^d \to \mathcal{Y}$ que minimiza $\mathcal{L}(f) = \mathbb{E}_{(\bm{x},y)\sim P}[\ell(f(\bm{x}),y)]$.}
-\end{orientacion}
-
 El problema abordado en este trabajo se enmarca dentro del aprendizaje supervisado, concretamente como una tarea de \textbf{clasificación binaria}. 
 
 
@@ -199,11 +178,6 @@ $$ P(\hat{y} = 1 \mid A = a) = P(\hat{y} = 1 \mid A = b) \quad \forall a, b \in 
 De este modo, la tarea no se limita a maximizar el rendimiento predictivo (precisión), sino a explorar empíricamente el compromiso (\textit{trade-off}) entre la precisión y la equidad algorítmica, incorporando posteriormente técnicas de explicabilidad (XAI) para auditar las predicciones $\hat{y}$ a nivel global y local.
 
 \subsection{Dataset}
-
-\begin{orientacion}
-\orientaciontitle
-\textit{Describe el \textit{dataset}: origen, licencia, número de instancias, número de \textit{features}, variable objetivo y distribución de clases. Incluye también las consideraciones éticas sobre su uso: ?`quiénes son los individuos representados?, ?`cómo se recogieron los datos?, ?`hay sesgos de selección conocidos?}
-\end{orientacion}
 
 La Tabla~\ref{tab:dataset} resume las características principales del \textit{dataset} utilizado.
 
@@ -282,11 +256,6 @@ A modo de conclusión de esta fase exploratoria, todas las decisiones metodológ
 
 \subsection{Problemáticas identificadas}
 
-\begin{orientacion}
-\orientaciontitle
-\textit{Justifica aquí qué problemáticas son relevantes para este problema concreto. La argumentación debe basarse en: (1)~el contexto de uso real del sistema (?`quién usa el modelo?, ?`sobre quién toma decisiones?), (2)~las características del \textit{dataset} (?`hay atributos sensibles?, ?`está desbalanceado?), y (3)~las obligaciones legales aplicables (RGPD, AI Act).}
-\end{orientacion}
-
 A partir del análisis del \textit{dataset} y del contexto de uso del sistema en el ámbito penal, se han identificado las siguientes problemáticas críticas que deben ser abordadas para garantizar un despliegue ético y técnico:
 
 \begin{itemize}
@@ -304,11 +273,6 @@ A partir del análisis del \textit{dataset} y del contexto de uso del sistema en
 \section{Metodología}
 \label{sec:metodologia}
 % ============================================================
-
-\begin{orientacion}
-\orientaciontitle
-\textit{Esta sección debe ser suficientemente detallada para que el trabajo sea reproducible. Describe el \textit{pipeline} completo, justifica cada decisión de dise\~{n}o, e incluye la formulación matemática de las técnicas que lo requieran.}
-\end{orientacion}
 
 \subsection{Preprocesamiento de Datos}
 \label{subsec:preprocesamiento}
@@ -351,11 +315,6 @@ Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{Co
 
 \subsection{Modelo \textit{baseline}}
 
-\begin{orientacion}
-\orientaciontitle
-\textit{El \textit{baseline} es el punto de referencia contra el que compararás las técnicas aplicadas. Elige un modelo estándar apropiado para la tarea y justifica su elección.}
-\end{orientacion}
-
 Para establecer un punto de referencia empírico riguroso en este estudio, se ha seleccionado un ensamblado basado en el algoritmo \textit{Extreme Gradient Boosting} (XGBoost) como modelo \textit{baseline}. Este clasificador servirá como el techo predictivo en su estado puro (sin restricciones algorítmicas de equidad). Su propósito metodológico se fundamenta en dos aspectos: por un lado, actúa como representante de las "cajas negras" actuales utilizadas en la industria. Por otro, permite cuantificar el impacto de las técnicas de mitigación de sesgo, midiendo cuánta utilidad predictiva (AUC-ROC o \textit{Accuracy}) se sacrifica, si la hubiese, para lograr la Paridad Demográfica.
 
 Más allá de su rendimiento numérico (cuya evaluación empírica se detalla en la Sección \ref{sec:resultados}), la arquitectura de XGBoost resulta excepcionalmente adecuada desde un punto de vista teórico-metodológico para modelar la reincidencia por las siguientes razones:
@@ -370,14 +329,6 @@ En definitiva, este modelo \textit{baseline} representa fielmente el estado del 
 
 \subsection{Tratamiento de la problemática 1: Mitigación de Sesgo Multidimensional mediante Optimización Restringida}
 \label{subsec:mitigacion_sesgo}
-
-\begin{orientacion}
-\orientaciontitle
-\textit{Describe la técnica aplicada. Incluye la formulación matemática cuando sea necesaria para entender el método. Justifica por qué esta técnica es adecuada para el problema y el \textit{dataset} elegidos.}
-\end{orientacion}
-
-[Descripción, formulación y justificación.]
-
 
 La reducción del sesgo en el modelo COMPAS presenta un desafío técnico fundamental: el sesgo no es una propiedad aislada de un único atributo, sino un fenómeno sistémico que impregna múltiples dimensiones de los datos. Si bien la raza (\textit{race}) se identifica como el atributo sensible primario siguiendo la investigación de \textit{ProPublica}, factores como la edad y el historial delictivo temprano actúan como variables latentes que pueden perpetuar la discriminación incluso si se eliminan las etiquetas raciales.
 
@@ -489,11 +440,6 @@ Este análisis permite estudiar cómo cambia el impacto de una variable sobre la
 
 
 \subsection{Protocolo de evaluación}
-
-\begin{orientacion}
-\orientaciontitle
-\textit{Describe cómo se evalúan los modelos: tipo de validación cruzada, métricas elegidas y justificación de su elección. Si el \textit{dataset} está desbalanceado, justifica el uso de métricas robustas (F1, AUC-ROC, etc.) en lugar de \textit{accuracy}.}
-\end{orientacion}
 
 Para garantizar la solidez estadística de los resultados empíricos y mitigar el riesgo de sobreajuste (\textit{overfitting}), la evaluación predictiva de los modelos se fundamenta en un protocolo de Validación Cruzada Estratificada de 5 particiones. La estratificación se realiza asegurando que la proporción original de la variable objetivo (reincidencia a dos años) se mantenga constante en cada uno de los pliegues de entrenamiento y prueba, permitiendo mediciones de rendimiento consistentes en todas las iteraciones.
 
@@ -820,13 +766,6 @@ En conjunto, los resultados de explicabilidad muestran que el modelo basa sus de
 \label{sec:conclusiones}
 % ============================================================
 
-\begin{orientacion}
-\orientaciontitle
-\textit{Síntesis de las contribuciones en 3--4 párrafos. Lecciones aprendidas. Líneas de trabajo futuro concretas y bien motivadas (no genéricas como ``aplicar \textit{deep learning}").}
-\end{orientacion}
-
-[Conclusiones aquí: 3--4 párrafos.]
-
 
 En este trabajo hemos abordado la predicción de reincidencia criminal sobre el dataset COMPAS desde una perspectiva técnica y ética. El objetivo no ha sido únicamente construir un modelo capaz de predecir la reincidencia, sino analizar si sus decisiones podían considerarse justas e interpretables en un contexto judicial. Para ello, hemos partido de un pipeline reproducible de preprocesamiento y hemos seleccionado XGBoost como modelo baseline, ya que ofrecía el mejor rendimiento entre los modelos evaluados. A partir de este punto, el trabajo se ha centrado en estudiar dos aspectos fundamentales: la equidad algorítmica y la explicabilidad del modelo.
 
@@ -860,33 +799,6 @@ Como líneas futuras, resulta necesario avanzar hacia sistemas de decisión auto
 % ============================================================
 
 \begin{thebibliography}{99}
-
-\bibitem{ref1}
-A. Autor1 y B. Autor2,
-``Título del artículo,''
-\textit{Nombre de la Revista},
-vol.~X, núm.~Y, pp.~ZZ--ZZ, a\~{n}o.
-\href{https://doi.org/XX.XXXX/XXXXXXX}{DOI:XX.XXXX/XXXXXXX}
-
-\bibitem{ref2}
-C. Autor3,
-``Título del artículo,''
-in \textit{Proc. Nombre de la Conferencia (ABREV)},
-Ciudad, País, a\~{n}o, pp.~ZZ--ZZ.
-
-\bibitem{ref3}
-D. Autor4, E. Autor5 y F. Autor6,
-``Título del artículo,''
-\textit{arXiv preprint arXiv:XXXX.XXXXX}, a\~{n}o.
-\href{https://arxiv.org/abs/XXXX.XXXXX}{arXiv:XXXX.XXXXX}
-
-\bibitem{ref4}
-G. Autor7,
-\textit{Título del libro},
-N.\ ed.
-Ciudad: Editorial, a\~{n}o.
-
-% Añadir el resto de referencias aquí
 
 \bibitem{travaini2022machine}
 G. V. Travaini, F. Pacchioni, S. Bellumore, M. Bosia y F. De Micco,
@@ -972,7 +884,7 @@ vol.~298, p.~103502, 2021.
 % ============================================================
 %  ANEXOS (opcionales)
 % ============================================================
-
+\newpage
 \appendix
 
 \section{Contribución individual}
@@ -985,9 +897,10 @@ vol.~298, p.~103502, 2021.
 \toprule
 \textbf{Miembro} & \textbf{Contribución principal} \\
 \midrule
-{[}Nombre Apellido1{]} & {[}EDA, preprocesamiento, Sección~3{]} \\
-{[}Nombre Apellido2{]} & {[}Implementación problemática 1, Sección~4.3{]} \\
-{[}Nombre Apellido3{]} & {[}Implementación problemática 2, Sección~4.4{]} \\
+Carlos Vidal Rodríguez & Implementación y tratamiento de la problemática 2, conclusiones Sección~4.4, 4.5.1, 5.3.2, 7\\
+David Martínez Gómez & Implementación y tratamiento problemática 1, Trabajo relacionado,  Sección~2, 4.3, 5.3.1 \\
+Pau Mateo Lillo & Descripción del problema y los datos: EDA, Preprocesamiento de datos, Modelo baselinem, Sección~3, 4.1, 4.2, 4.5 \\
+Stanislav Gatin & Modelo baseline, Experimentos y resultados, Sección~4.2, 5.1, 5.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
