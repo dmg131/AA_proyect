@@ -314,14 +314,58 @@ Donde $\mu$ representa la media aritmética y $\sigma$ la desviación estándar 
 Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{ColumnTransformer} de Scikit-Learn. Esta arquitectura de software garantiza la reproducibilidad del experimento y asegura que cualquier dato nuevo que ingrese al sistema sea procesado bajo los mismos criterios estadísticos, manteniendo la coherencia del flujo de trabajo de aprendizaje automático.
 
 \subsection{Modelo \textit{baseline}}
+\label{subsec:metodologia_baseline}
 
-Para establecer un punto de referencia empírico riguroso en este estudio, se ha seleccionado un ensamblado basado en el algoritmo \textit{Extreme Gradient Boosting} (XGBoost) como modelo \textit{baseline}. Este clasificador servirá como el techo predictivo en su estado puro (sin restricciones algorítmicas de equidad). Su propósito metodológico se fundamenta en dos aspectos: por un lado, actúa como representante de las ''cajas negras'' actuales utilizadas en la industria. Por otro, permite cuantificar el impacto de las técnicas de mitigación de sesgo, midiendo cuánta utilidad predictiva (AUC-ROC o \textit{Accuracy}) se sacrifica, si la hubiese, para lograr la Paridad Demográfica.
+El modelo \textit{baseline} cumple en este estudio un doble propósito metodológico: por un lado, actúa como representante del estado del arte predictivo (las ''cajas negras'' utilizadas habitualmente en la industria) y, por otro, fija el techo de utilidad sobre el cual se cuantificará posteriormente el coste de las restricciones de equidad (Sección~\ref{subsec:mitigacion_sesgo}). Dada esta función de referencia, su selección no se delega a una elección \textit{a priori}, sino que se aborda como un problema empírico: se evalúa de forma comparativa una batería de familias algorítmicas representativas y se escoge la de mayor capacidad de generalización bajo un protocolo idéntico.
 
-Más allá de su rendimiento numérico (cuya evaluación empírica se detalla en la Sección \ref{sec:resultados}), la arquitectura de XGBoost resulta excepcionalmente adecuada desde un punto de vista teórico-metodológico para modelar la reincidencia por las siguientes razones:
+\subsubsection{Familias de modelos consideradas}
+
+Con el objetivo de cubrir un espectro amplio de sesgo inductivo, se han incluido cinco algoritmos pertenecientes a paradigmas claramente diferenciados de aprendizaje supervisado:
+
+\begin{itemize}
+    \item \textbf{Regresión Logística} (\textit{lineal-paramétrico}): clasificador lineal con regularización $L_2$, utilizado como referencia interpretable de baja complejidad.
+    \item \textbf{Árbol de Decisión} (\textit{no-lineal, no ensamblado}): modelo basado en particiones recursivas; permite contrastar el rendimiento de un único estimador frente a sus versiones ensambladas.
+    \item \textbf{Random Forest} (\textit{ensamblado por \textit{bagging}}): combinación de árboles entrenados sobre muestras \textit{bootstrap}, con el objetivo de reducir la varianza del estimador.
+    \item \textbf{Support Vector Machine} (\textit{basado en \textit{kernels}}): explora fronteras de decisión no lineales mediante el truco del \textit{kernel} (RBF y lineal), con probabilidad calibrada para permitir el cálculo de AUC.
+    \item \textbf{XGBoost} (\textit{ensamblado por \textit{boosting}}): ensamblado secuencial con regularización explícita, representativo del estado del arte en datos tabulares ruidosos.
+\end{itemize}
+
+\subsubsection{Protocolo común de evaluación}
+
+Para garantizar que la comparación entre familias sea justa y reproducible, todos los candidatos se entrenaron bajo un mismo protocolo experimental encapsulado en una \textit{Pipeline} de Scikit-Learn que enlaza el \textit{ColumnTransformer} descrito en la Sección~4.1 con el clasificador, evitando así cualquier fuga de información entre los pliegues de validación.
+
+La optimización de hiperparámetros se realiza mediante \textbf{\textit{Grid Search} exhaustivo} sobre el subconjunto de \textit{train} (70\,\% de los datos), validado con una estrategia de \textbf{\textit{Stratified K-Fold} con $K=5$} y semilla fija ($\texttt{random\_state}=42$), que preserva la proporción de la clase positiva en cada partición. El estimador se reajusta (\texttt{refit}) sobre el mejor candidato según la métrica principal AUC-ROC, registrando también \textit{Accuracy}, $F_1$, \textit{Precision} y \textit{Recall} como métricas secundarias. La elección del AUC-ROC como criterio rector responde a su insensibilidad al umbral de decisión y al ligero desbalance de clases del \textit{dataset}.
+
+La Tabla~\ref{tab:espacios_hiperparametros} resume los espacios de búsqueda explorados para cada familia, diseñados para cubrir tanto regímenes de alta regularización como configuraciones de mayor capacidad.
+
+\begin{table}[H]
+    \centering
+    \footnotesize
+    \begin{tabular}{p{3.2cm} p{10cm} r}
+        \toprule
+        \textbf{Modelo} & \textbf{Hiperparámetros explorados} & \textbf{Combinaciones} \\
+        \midrule
+        Regresión Logística & $C \in \{10^{-3},\dots,10^{2}\}$; \texttt{penalty}=$L_2$; \texttt{class\_weight} $\in \{\text{None},\text{balanced}\}$ & 12 \\
+        Árbol de Decisión & \texttt{criterion} $\in \{\text{gini},\text{entropy}\}$; \texttt{max\_depth} $\in \{2,3,4,5,7,\text{None}\}$; \texttt{min\_samples\_split}, \texttt{min\_samples\_leaf} y \texttt{class\_weight} & 384 \\
+        Random Forest & \texttt{n\_estimators} $\in \{50,\dots,300\}$; \texttt{max\_depth} $\in \{2,3,5,7,10\}$; \texttt{max\_features} $\in \{\text{sqrt},\text{log2},0.5\}$; \texttt{class\_weight} & 180 \\
+        SVM & $C \in \{0.1,1,10\}$; \texttt{kernel} $\in \{\text{linear},\text{rbf}\}$; \texttt{class\_weight} & 12 \\
+        XGBoost & \texttt{n\_estimators}, \texttt{max\_depth}, \texttt{learning\_rate}, \texttt{subsample}, \texttt{colsample\_bytree} & 576 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Espacios de búsqueda de hiperparámetros explorados mediante \textit{Grid Search} con validación cruzada estratificada $K=5$.}
+    \label{tab:espacios_hiperparametros}
+\end{table}
+
+En total se evaluaron $1\,164$ configuraciones distintas, equivalentes a $5\,820$ ajustes de modelo. Los resultados de esta comparativa se discuten en la Sección~\ref{subsec:resultados_baseline}, donde XGBoost se consolida formalmente como el modelo \textit{baseline} al alcanzar el mayor AUC-ROC.
+
+\subsubsection{Adecuación teórica del candidato seleccionado}
+
+Más allá del rendimiento numérico, la arquitectura de XGBoost resulta especialmente adecuada desde un punto de vista teórico-metodológico para modelar la reincidencia por las siguientes razones:
 
 \begin{itemize}
     \item \textbf{Gestión de interacciones no lineales:} A diferencia de los modelos lineales estadísticos tradicionales, los ensamblados basados en árboles de decisión pueden capturar interacciones paramétricas complejas de forma nativa (por ejemplo, el efecto cruzado entre la edad temprana y un alto número de delitos juveniles previos).
-    \item \textbf{Robustez frente al ruido humano (\textit{Overfitting}):} Los datos derivados del comportamiento humano y de la administración de justicia penal poseen un nivel extremo de ruido estocástico. XGBoost proporciona mecanismos avanzados de regularización. Esto forzó a la arquitectura a crear un bosque de árboles "débiles y simples" que evita la memorización de casos atípicos o historiales anecdóticos.
+    \item \textbf{Robustez frente al ruido humano (\textit{Overfitting}):} Los datos derivados del comportamiento humano y de la administración de justicia penal poseen un nivel extremo de ruido estocástico. XGBoost proporciona mecanismos avanzados de regularización (\texttt{subsample}, \texttt{colsample\_bytree} y profundidad limitada), que fuerzan a la arquitectura a construir un bosque de árboles ''débiles y simples'' y evitan la memorización de casos atípicos.
+    \item \textbf{Compatibilidad con la mitigación \textit{in-processing}:} la formulación basada en gradiente exponencial empleada en la Sección~\ref{subsec:mitigacion_sesgo} requiere un clasificador base reentrenable bajo pesos muestrales arbitrarios, requisito que XGBoost satisface de forma nativa.
 \end{itemize}
 
 En definitiva, este modelo \textit{baseline} representa fielmente el estado del arte predictivo: una herramienta altamente eficaz en la minimización del error de clasificación, pero que, sin un marco de supervisión ética activa, hereda y amplifica silenciosamente las disparidades raciales codificadas en los datos de entrada.
@@ -732,22 +776,39 @@ En conjunto, los resultados de explicabilidad muestran que el modelo basa sus de
 \label{sec:discusion}
 % ============================================================
 
-\begin{orientacion}
-\orientaciontitle
-\textit{Interpreta los resultados en el contexto del problema real: ?`qué significan para los usuarios afectados por el sistema? Analiza las limitaciones con rigor y evita afirmaciones genéricas sobre ética; las implicaciones deben ser específicas y estar fundamentadas en los resultados obtenidos.}
-\end{orientacion}
-
 \subsection{Interpretación de los resultados}
 
-[Interpreta los resultados en el contexto del problema real: 2--3 párrafos.]
+La lectura conjunta de los resultados obtenidos permite trasladar las cifras del experimento al plano del problema real: la evaluación automatizada del riesgo de reincidencia en el sistema judicial penal. El primer hallazgo relevante es que, en el contexto del \textit{dataset} COMPAS, ninguna de las cinco familias algorítmicas exploradas alcanza un poder predictivo verdaderamente alto. El AUC-ROC máximo observado (XGBoost, $0.7406$) y la cercanía de los demás candidatos (Random Forest $0.7370$, SVM $0.7315$ e incluso Regresión Logística $0.7305$) sugieren que el techo predictivo no está limitado por la sofisticación del modelo, sino por la propia señal estadística contenida en los datos. En términos prácticos, esto significa que aproximadamente uno de cada tres individuos sería clasificado de forma incorrecta por cualquier sistema basado en estas variables, independientemente del algoritmo escogido. Para una persona evaluada en un juzgado de Broward, esa cifra deja de ser un detalle metodológico y pasa a representar un riesgo material de privación injustificada de libertad.
+
+El segundo hallazgo es que la mitigación \textit{in-processing} mediante Reducción de Gradiente Exponencial logra reconducir la dimensión ética del sistema sin destruir su utilidad operativa. La compresión de la brecha racial de \textit{Equalized Odds} en un $68.35\%$ (de $0.2812$ a $0.0890$) frente a una caída controlada de la exactitud del $1.68\%$ ($0.6971 \to 0.6803$) es indicativa de que la disparidad observada en el modelo base no era una consecuencia inevitable del aprendizaje, sino un artefacto absorbido por el optimizador no restringido. Particularmente significativo es el efecto cruzado sobre subgrupos interseccionales no incluidos explícitamente en la restricción: la brecha \textit{race--sex} se reduce de $0.4877$ a $0.2209$ y la \textit{race--age} de $0.5215$ a $0.4295$, lo que sugiere que parte del sesgo demográfico estaba operando a través de variables \textit{proxy} (principalmente \texttt{priors\_count} y \texttt{age}) y que la intervención sobre la raíz racial arrastra parcialmente esas correlaciones latentes. No obstante, la persistencia de brechas residuales en las dimensiones \textit{sex}, \textit{age\_group} y especialmente \textit{race\_age} indica que una intervención unidimensional no agota el espacio de discriminación posible.
+
+El tercer hallazgo procede del análisis XAI. SHAP confirma que el clasificador concentra la mayor parte de su capacidad explicativa en variables coherentes con el dominio (\texttt{priors\_count} y \texttt{age}), pero también permite documentar casos donde esa lógica produce resultados problemáticos. El individuo 1505 (afroamericano, 20 años, sin antecedentes) es clasificado como reincidente con probabilidad $0.591$ fundamentalmente porque el modelo trata la juventud como factor de riesgo. Este patrón, lejos de ser anecdótico, ilustra el tipo de razonamiento estadístico que un juez no podría justificar verbalmente ante un acusado: la decisión no se apoya en hechos del historial del individuo, sino en una regularidad poblacional sobre cómo se comportan, en agregado, las personas de su edad.
 
 \subsection{Limitaciones}
 
-[Identifica y analiza las limitaciones no triviales: supuestos asumidos, restricciones del \textit{dataset}, limitaciones de las técnicas aplicadas.]
+Las conclusiones anteriores deben leerse a la luz de varias limitaciones no triviales que acotan su alcance.
+
+\paragraph{Limitaciones del \textit{dataset}.} COMPAS recoge únicamente registros del condado de Broward (Florida, 2013--2014) y la etiqueta \texttt{two\_year\_recid} no mide reincidencia real, sino \emph{rearresto} dentro de una ventana de dos años. Dado que las tasas de policiamiento no son homogéneas entre grupos raciales, la propia variable objetivo arrastra el sesgo del sistema que genera los datos: un modelo entrenado para predecir rearrestos aprende patrones de vigilancia tanto como patrones de comportamiento delictivo. Asimismo, la eliminación por lista de los registros con valores ausentes (de $7\,214$ a $6\,167$ instancias) puede haber introducido un sesgo de selección no auditado.
+
+\paragraph{Limitaciones del modelo base.} El AUC-ROC alcanzado ($0.7406$) es modesto en términos absolutos, lo que limita la confianza individual de cualquier predicción. Adicionalmente, el conjunto de variables disponibles es reducido (13 \textit{features}) y omite información contextual (socioeconómica, educativa, de salud mental) que la literatura criminológica considera predictiva. Las conclusiones sobre la importancia relativa de variables como \texttt{age} o \texttt{priors\_count} están condicionadas por esta ausencia.
+
+\paragraph{Limitaciones de la mitigación.} El algoritmo de Gradiente Exponencial se ha aplicado sobre el atributo sensible \textit{race} de forma unidimensional. Aunque arrastra parcialmente las brechas interseccionales, no las elimina y las dimensiones \textit{age\_group} y \textit{race\_age} retienen disparidades sustanciales tras la intervención. Por otro lado, el \textit{Equalized Odds Gap} no se reduce a cero, lo que es coherente con los resultados de imposibilidad de Kleinberg, Chouldechova y otros: con tasas base distintas entre grupos, ningún clasificador puede satisfacer simultáneamente paridad demográfica, calibración y equiparación de tasas de error. La elección de \textit{Equalized Odds} como criterio implica, por tanto, renunciar deliberadamente a otras nociones de justicia algorítmica.
+
+\paragraph{Limitaciones de la explicabilidad.} Las atribuciones SHAP asumen independencia condicional entre características, supuesto que se vulnera en este \textit{dataset} (por ejemplo, \texttt{priors\_count} y \texttt{age} están correlacionadas con la raza). Esto puede reasignar contribuciones entre variables genuinas y \textit{proxies}, suavizando aparentemente la importancia de los atributos sensibles. LIME, por su parte, depende de un muestreo aleatorio del vecindario del punto explicado, lo que introduce variabilidad estocástica en las explicaciones locales. Las conclusiones individuales (como el análisis del individuo 1505) deben entenderse como evidencia ilustrativa, no como una auditoría exhaustiva.
+
+\paragraph{Limitaciones de validación externa.} Toda la evaluación se ha realizado sobre el mismo \textit{dataset} de origen y con una única partición \textit{train/test} estratificada. No se ha llevado a cabo validación temporal ni transferencia a otras jurisdicciones, por lo que los resultados no garantizan generalización fuera del contexto de Broward.
 
 \subsection{Implicaciones éticas, legales y sociales}
 
-[Reflexión sobre las implicaciones reales del sistema. ?`Cómo afectan los resultados a los grupos implicados? ?`Qué obligaciones legales aplicarían bajo el RGPD o el AI Act?]
+Las cifras obtenidas tienen consecuencias específicas para los grupos afectados por este tipo de sistema y se enmarcan en obligaciones legales concretas del entorno europeo.
+
+\paragraph{Efecto desigual sobre colectivos vulnerables.} En el modelo base, la tasa de falsos positivos sobre el colectivo afroamericano duplica aproximadamente la del colectivo caucásico (Figura~\ref{fig:auditoria_fpr_etnia}). Traducido al impacto social, esto implica que el sistema, sin intervención, etiquetaría como ''alto riesgo'' a ciudadanos inocentes de la minoría racial con una probabilidad significativamente mayor que a ciudadanos inocentes de la mayoría, replicando el patrón documentado por ProPublica. La mitigación aplicada no resuelve por completo esta disparidad (persisten brechas residuales y, especialmente, los individuos jóvenes afroamericanos siguen siendo el subgrupo peor servido por el modelo), pero sí desplaza el sistema desde una situación claramente discriminatoria hacia una región operativa donde la disparidad es de orden comparable al ruido estadístico del clasificador.
+
+\paragraph{Encaje en el AI Act.} Los sistemas de predicción de riesgo individual en justicia penal están explícitamente catalogados como de \textbf{alto riesgo} en el Anexo III del Reglamento (UE) 2024/1689 (AI Act). Esta clasificación impone obligaciones materiales: sistema de gestión de riesgos (Art. 9), gobernanza de datos y mitigación de sesgos (Art. 10), trazabilidad y documentación técnica (Arts. 11--12), supervisión humana significativa (Art. 14) y robustez/precisión adecuadas a la finalidad (Art. 15). Los elementos producidos en este trabajo (protocolo reproducible de preprocesamiento, comparación documentada de candidatos, auditoría multidimensional de equidad, mitigación restringida con \textit{trade-off score} justificado y explicaciones locales SHAP/LIME) cubren parcialmente estos requisitos, pero no eximen al despliegue real de un sistema de gestión continua del riesgo. En particular, el Art. 14 exige que la supervisión humana sea \emph{efectiva}, lo que implica que las explicaciones generadas deban ser comprensibles para el operador judicial; el ejemplo del individuo 1505 muestra que esta interpretabilidad técnica no equivale automáticamente a justificabilidad jurídica.
+
+\paragraph{Encaje en el RGPD.} El Art. 22 del Reglamento (UE) 2016/679 prohíbe las decisiones basadas únicamente en tratamiento automatizado que produzcan efectos jurídicos significativos sobre el interesado, salvo excepciones tasadas, e impone el derecho a obtener intervención humana y a impugnar la decisión. Por tanto, incluso un sistema técnicamente equitativo como el mitigado en este trabajo no puede sustituir el criterio judicial, sino únicamente informarlo. Adicionalmente, el tratamiento de la variable \textit{race} como atributo sensible cae dentro del Art. 9 (categorías especiales de datos), lo que exige una base jurídica reforzada para su uso, incluso cuando dicho uso, como en este trabajo, persigue precisamente medir y reducir la discriminación.
+
+\paragraph{Implicaciones sociales.} Más allá del cumplimiento normativo, los resultados invitan a una reflexión sobre el coste de oportunidad de desplegar sistemas de este tipo. Un AUC-ROC de $0.74$ implica que el sistema funciona razonablemente mejor que el azar, pero está lejos de ofrecer certezas individuales. Trasladar esa incertidumbre a decisiones sobre libertad provisional o régimen penitenciario requiere un marco institucional que asuma explícitamente dicho margen de error y que articule mecanismos efectivos de reparación cuando este se materialice. En ausencia de ese marco, la sofisticación técnica del sistema, incluso tras la mitigación, corre el riesgo de transferir responsabilidad desde un decisor humano identificable hacia un proceso estadístico opaco para la persona afectada.
 
 
 
