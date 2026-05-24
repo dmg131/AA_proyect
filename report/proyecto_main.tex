@@ -315,7 +315,7 @@ Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{Co
 
 \subsection{Modelo \textit{baseline}}
 
-Para establecer un punto de referencia empírico riguroso en este estudio, se ha seleccionado un ensamblado basado en el algoritmo \textit{Extreme Gradient Boosting} (XGBoost) como modelo \textit{baseline}. Este clasificador servirá como el techo predictivo en su estado puro (sin restricciones algorítmicas de equidad). Su propósito metodológico se fundamenta en dos aspectos: por un lado, actúa como representante de las "cajas negras" actuales utilizadas en la industria. Por otro, permite cuantificar el impacto de las técnicas de mitigación de sesgo, midiendo cuánta utilidad predictiva (AUC-ROC o \textit{Accuracy}) se sacrifica, si la hubiese, para lograr la Paridad Demográfica.
+Para establecer un punto de referencia empírico riguroso en este estudio, se ha seleccionado un ensamblado basado en el algoritmo \textit{Extreme Gradient Boosting} (XGBoost) como modelo \textit{baseline}. Este clasificador servirá como el techo predictivo en su estado puro (sin restricciones algorítmicas de equidad). Su propósito metodológico se fundamenta en dos aspectos: por un lado, actúa como representante de las ''cajas negras'' actuales utilizadas en la industria. Por otro, permite cuantificar el impacto de las técnicas de mitigación de sesgo, midiendo cuánta utilidad predictiva (AUC-ROC o \textit{Accuracy}) se sacrifica, si la hubiese, para lograr la Paridad Demográfica.
 
 Más allá de su rendimiento numérico (cuya evaluación empírica se detalla en la Sección \ref{sec:resultados}), la arquitectura de XGBoost resulta excepcionalmente adecuada desde un punto de vista teórico-metodológico para modelar la reincidencia por las siguientes razones:
 
@@ -908,15 +908,12 @@ Stanislav Gatin        & Modelo baseline, Experimentos y resultados. Sección~4.
 \section{Enlace al repositorio}
 
 El código fuente del trabajo está disponible en:
-\url{https://github.com/[usuario]/[nombre-repositorio]}
+\url{https://github.com/dmg131/AA_proyect}
 
 \section{Uso de herramientas de IA generativa}
 
-\begin{orientacion}
-\orientaciontitle
-\textit{Indica si has utilizado herramientas de IA generativa (ChatGPT, GitHub Copilot, etc.) en la elaboración del trabajo, cómo las has usado y en qué partes. Si no se han utilizado, indícalo explícitamente.}
-\end{orientacion}
+Durante la elaboración de este trabajo hemos utilizado ChatGPT, Gemini y Claude como herramientas de apoyo. Las hemos usado principalmente para tres cosas: generar y corregir algunos fragmentos de código, buscar y organizar información relacionada con el tema, y mejorar la redacción de la memoria para que el texto quedara más claro, expresivo y con un carácter más científico.
 
-[Descripción del uso, o bien: ``No se han utilizado herramientas de IA generativa en la elaboración de este trabajo".]
+En el caso del código, no todo ha sido generado con IA. Las partes en las que nos hemos apoyado en estas herramientas han sido revisadas, adaptadas y comprobadas por el grupo antes de incluirlas en el proyecto.
 
 \end{document}
