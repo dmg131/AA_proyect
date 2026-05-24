@@ -1,0 +1,984 @@
+% ============================================================
+%  Plantilla para el Proyecto Final de Aprendizaje Automático
+%  Escuela Politécnica Superior — Universidad de Alicante
+%  Formato: artículo científico (una columna)
+% ============================================================
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red!70!black},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black
+}
+
+% Configuración de bloques de orientación
+\usepackage{mdframed}
+
+\newmdenv[
+  backgroundcolor=blue!6,
+  linecolor=blue!50!black,
+  linewidth=1pt,
+  roundcorner=4pt,
+  innerleftmargin=8pt,
+  innerrightmargin=8pt,
+  innertopmargin=6pt,
+  innerbottommargin=6pt,
+  skipabove=6pt,
+  skipbelow=4pt
+]{orientacion}
+
+\newcommand{\orientaciontitle}{%
+  {\small\bfseries\color{blue!60!black}Orientación}\par\smallskip
+}
+
+% Otros 
+\usepackage{microtype}
+
+
+% ============================================================
+%  DATOS DEL TRABAJO 
+% ============================================================
+
+\title{
+    \textbf{Predicción de Reincidencia Criminal bajo Restricciones de Equidad y Explicabilidad Post-Hoc}\\[4pt]
+    \large Evaluación Crítica y Mitigación de Sesgos Raciales sobre el Dataset COMPAS mediante Optimización Restringida
+}
+
+\author{
+    \textbf{Carlos Vidal Rodríguez}\thanks{\texttt{[cvr33@alu.ua.es]}}
+    \qquad
+    \textbf{David Martínez Gómez}\thanks{\texttt{[dmg131@alu.ua.es]}}
+    \\[10pt]
+    \textbf{Pau Mateo Lillo}\thanks{\texttt{[pml75@alu.ua.es]}}
+    \qquad
+    \textbf{Stanislav Gatin}\thanks{\texttt{[sg121@alu.ua.es]}}
+    \\[16pt]
+    \small Grado en Ingeniería en Inteligencia Artificial
+    --- Escuela Politécnica Superior, Universidad de Alicante\\
+    \small Aprendizaje Avanzado --- Curso 2025/2026
+}
+
+\date{}
+
+% ============================================================
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+% Abstract 
+
+\begin{abstract}
+\textit{Este trabajo aborda la problemática de la predicción automatizada del riesgo de reincidencia criminal en el sistema judicial penal y su impacto directo en los derechos fundamentales. Utilizando el conjunto de datos COMPAS de ProPublica, se identifica y cuantifica la presencia de sesgos raciales sistémicos e indirectos inherentes a las arquitecturas predictivas tradicionales de caja negra. Para resolver este desafío, se propone un pipeline reproducible basado en el algoritmo XGBoost como modelo baseline (AUC-ROC de 0.7406), sobre el cual se aplican técnicas de mitigación in-processing mediante el algoritmo de Reducción de Gradiente Exponencial bajo restricciones de igualdad de probabilidades (Equalized Odds). Los resultados experimentales demuestran que es posible contraer la brecha de Equalized Odds racial en un 68.35\% (pasando de 0.2812 a 0.0890) asumiendo una degradación controlada de la exactitud global de apenas el 1.68\%. Adicionalmente, el comportamiento interno del clasificador es auditado de manera global y local mediante técnicas de explicabilidad post-hoc (SHAP y LIME), analizando críticamente el peso de variables demográficas y desglosando la lógica algorítmica detrás de falsos positivos específicos. El sistema final proporciona un marco equilibrado alineado con los estándares éticos y los requisitos de gobernanza de la Ley de Inteligencia Artificial de la Unión Europea.}
+\end{abstract}
+
+\smallskip
+\noindent\textbf{Palabras clave:} aprendizaje automático, equidad algorítmica, explicabilidad post-hoc, COMPAS, XGBoost, SHAP.
+\tableofcontents
+\newpage
+
+
+% ============================================================
+\section{Introducción}
+% ============================================================
+
+En los últimos años, el uso de modelos de aprendizaje automático en contextos de alto impacto social ha crecido de forma significativa, especialmente en áreas relacionadas con la toma de decisiones públicas. Uno de los ámbitos más sensibles es el sistema judicial, donde algoritmos de predicción se utilizan o se proponen como herramientas de apoyo para estimar la probabilidad de reincidencia de individuos dentro del sistema penal. Estos sistemas pueden influir en decisiones críticas como la concesión de libertad condicional, la asignación de recursos penitenciarios o la participación en programas de rehabilitación.
+
+Sin embargo, la aplicación de estos modelos en entornos judiciales plantea desafíos fundamentales tanto técnicos como éticos. En particular, los errores de predicción pueden tener consecuencias graves a nivel individual y social: un \textit{falso positivo} puede contribuir a decisiones injustamente restrictivas, mientras que un \textit{falso negativo} puede subestimar el riesgo real de reincidencia. Además, diversos estudios han evidenciado la presencia de sesgos en los datos utilizados para entrenar estos modelos, lo que puede derivar en resultados discriminatorios hacia ciertos grupos demográficos.
+
+En este contexto, el dataset \textit{COMPAS Recidivism} de ProPublica se ha convertido en un referente para el estudio de estas problemáticas, al poner en evidencia posibles desigualdades raciales en sistemas de predicción de riesgo. A partir de este caso, surge la necesidad de analizar no solo el rendimiento predictivo de los modelos, sino también su equidad (\textit{fairness}) y su capacidad de explicación (\textit{explainability}), aspectos clave para su posible aplicación en entornos reales.
+
+El presente proyecto tiene como objetivo desarrollar un modelo de aprendizaje automático para la predicción de reincidencia, acompañado de un análisis crítico de sus implicaciones éticas. En particular, se abordarán dos problemáticas principales: la detección y evaluación de sesgos en las predicciones mediante métricas de equidad, y la interpretabilidad del modelo mediante técnicas de explicabilidad (\textit{XAI}), como \textit{SHAP} (\textit{SHapley Additive exPlanations}). De este modo, se busca no solo optimizar el rendimiento del modelo, sino también evaluar su transparencia, justicia y viabilidad en contextos judiciales reales.
+
+
+% ============================================================
+\section{Trabajo Relacionado}
+\label{sec:related}
+% ============================================================
+
+\subsection{Modelos de predicción de reincidencia y el impacto de COMPAS}
+
+La aplicación de algoritmos de aprendizaje automático (\textit{Machine Learning}, ML) en el sistema de justicia penal se ha expandido como una herramienta para reducir los altos índices de reincidencia, que en diversas jurisdicciones internacionales alcanzan el 50\%. La literatura científica ha evolucionado desde el uso de escalas estadísticas simples hacia modelos complejos que buscan optimizar la toma de decisiones sobre libertad condicional y rehabilitación. En términos de rendimiento, revisiones sistemáticas recientes sitúan el estado del arte en una precisión ($ACC$) media de 0.81 y un área bajo la curva ($AUC$) de 0.74 \cite{travaini2022machine}. 
+
+Diversos estudios han explorado una amplia gama de arquitecturas para maximizar esta capacidad predictiva. Por ejemplo, Duwe y Kim (2017) emplearon algoritmos de \textit{LogitBoost} sobre el \textit{dataset} MnSTARR+, obteniendo un $ACC$ de 0.82 y un $AUC$ de 0.78 \cite{duwe2017out}. Por su parte, Singh y Mohapatra (2021) propusieron un modelo de ensamble (\textit{Ensemble Learning}) combinando clasificadores Bayesiano, KNN y SVM, alcanzando un $ACC$ de 0.87 en poblaciones de delincuentes primerizos \cite{singh2021development}. En contextos institucionales específicos, Butsara et al. (2019) reportaron precisiones de hasta 0.90 mediante regresión logística aplicada a internos en Tailandia \cite{butsara2019predicting}. Asimismo, para tipos de delitos específicos como el sexual, trabajos basados en Análisis Discriminante Lineal (LDA) y \textit{Random Forest} han reportado valores de $ACC$ de hasta 0.96 y $AUC$ de 0.78, respectivamente \cite{tollenaar2013method, salo2019predictive}. A pesar de estos avances técnicos, el caso de COMPAS ha puesto de manifiesto que un alto rendimiento no excluye la presencia de sesgos críticos, impulsando la necesidad de evaluar la equidad junto con la precisión \cite{angwin2016machine, karimi2021enhancing}.
+
+En este marco, el uso del \textit{dataset} COMPAS personifica la tensión entre la eficacia técnica y la integridad ética, tras la investigación de ProPublica \cite{angwin2016machine} que evidenció disparidades críticas a pesar de los rendimientos alcanzados. Si bien se han reportado precisiones elevadas con arquitecturas avanzadas, estudios comparativos indican que modelos interpretables como la regresión logística ---frecuentemente utilizada en este dominio--- presentan una validez predictiva y un rendimiento similares a algoritmos de ``caja negra'' como \textit{Random Forest}. Esta falta de superioridad empírica de los modelos complejos, sumada a su diseño inaccesible para el usuario humano, subraya la necesidad de transitar hacia algoritmos transparentes o técnicas de \textit{Explainable AI} (XAI) que permitan discernir cómo influyen individualmente variables como la etnia o la edad en la evaluación final del riesgo.
+
+\subsection{Equidad algorítmica y mitigación de sesgos}
+
+El principal desafío identificado en la literatura no reside únicamente en la capacidad predictiva, sino en la presencia de sesgos discriminatorios, particularmente raciales y de edad. Diversas investigaciones han señalado que estos sesgos pueden heredarse de métodos de recolección de datos sesgados o de un preprocesamiento inadecuado, factores que influyen significativamente en el rendimiento final del modelo. 
+
+El enfoque actual en el estado del arte, ejemplificado por trabajos como los de Karimi-Haghighi y Castillo \cite{karimi2021enhancing}, se centra en integrar métricas de equidad (\textit{fairness}) directamente en el ciclo de vida del modelo. No obstante, una limitación crítica en muchos estudios previos es la falta de explicitud sobre el proceso de preprocesamiento, lo que dificulta la comparabilidad entre diferentes técnicas de mitigación de sesgo.
+
+\subsection{Explicabilidad (XAI) en el entorno judicial}
+
+La naturaleza de ``caja negra'' de muchos modelos avanzados de aprendizaje automático constituye una barrera crítica en el sistema judicial, ya que impide evaluar si la predicción de riesgo cumple con principios de justicia y debido proceso. Según la taxonomía establecida por Arrieta et al. \cite{arrieta2020explainable}, la explicabilidad no debe entenderse como un concepto unívoco, sino como una propiedad dependiente de la \textit{audiencia} (jueces, abogados o acusados), quienes requieren distintos niveles de transparencia técnica y comprensibilidad para validar las decisiones del sistema.
+
+En este ámbito, el estado del arte distingue entre modelos \textbf{intrínsecamente transparentes} --- que cumplen con propiedades de simulatabilidad, decomposabilidad y transparencia algorítmica--- y técnicas de \textbf{explicabilidad post-hoc} \cite{arrieta2020explainable}. Estas últimas son esenciales cuando se emplean algoritmos de alta complejidad (como \textit{XGBoost} o Redes Neuronales) para predecir la reincidencia, permitiendo iluminar el proceso de decisión sin sacrificar el rendimiento predictivo.
+
+Dentro de los métodos \textit{post-hoc}, la técnica \textit{SHAP} (\textit{SHapley Additive exPlanations}) se ha consolidado como el estándar para cuantificar la contribución de cada variable. No obstante, una limitación significativa de su implementación original (\textit{Kernel SHAP}) es el supuesto de independencia entre las características. Como demuestran Aas et al. \cite{aas2021explaining}, en entornos judiciales donde las variables socioeconómicas y delictivas suelen presentar una alta correlación, ignorar estas dependencias puede derivar en explicaciones inexactas o sesgadas.
+
+Para abordar este desafío, la literatura reciente propone extensiones de \textit{SHAP} que incorporan la dependencia de variables mediante el uso de \textbf{Cópulas Gaussianas} y \textbf{distribuciones condicionales empíricas} \cite{aas2021explaining}. Estas técnicas permiten una descomposición del riesgo más fiel a la realidad delictiva, facilitando incluso la \textbf{agrupación (clustering)} de contribuciones de variables dependientes para ofrecer una visión más clara y accionable a los operadores jurídicos.
+
+% ============================================================
+\section{Descripción del Problema y los Datos}
+\label{sec:datos}
+% ============================================================
+
+\subsection{Definición formal de la tarea}
+
+El problema abordado en este trabajo se enmarca dentro del aprendizaje supervisado, concretamente como una tarea de \textbf{clasificación binaria}. 
+
+
+Sea un espacio de entrada $\mathcal{X} \subseteq \mathbb{R}^d$, donde cada vector de características $\bm{x} \in \mathcal{X}$ representa el perfil de un individuo procesado por el sistema judicial. Definimos el espacio de salida o variable objetivo como $\mathcal{Y} = \{0, 1\}$, donde $y = 1$ indica que el individuo reincide en un plazo de dos años (\textit{two-year recidivism}) y $y = 0$ indica que no lo hace. Adicionalmente, denotamos por $A \in \mathcal{A}$ al atributo sensible o protegido presente en el espacio de entrada (en nuestro caso, la raza del individuo), donde $\mathcal{A}$ representa los posibles grupos demográficos (por ejemplo, afroamericano o caucásico).
+
+El objetivo principal del sistema es aprender una función predictiva $f\colon \mathcal{X} \to [0,1]$ que estime la probabilidad de reincidencia $\hat{y} = P(y=1 \mid \bm{x})$, minimizando el riesgo esperado respecto a una función de pérdida $\ell$:
+
+$$ \mathcal{L}(f) = \mathbb{E}_{(\bm{x},y)\sim P}[\ell(f(\bm{x}), y)] $$
+
+Sin embargo, dado el alto impacto social de las decisiones judiciales, la optimización tradicional del modelo predictivo está sujeta a restricciones de \textbf{equidad algorítmica} (\textit{fairness}). Por lo tanto, el objetivo de la tarea se reformula como un problema de optimización restringida, donde se busca minimizar la pérdida $\mathcal{L}(f)$ garantizando simultáneamente que el modelo cumpla con una métrica de equidad predefinida. Por ejemplo, si se busca optimizar bajo el criterio de Paridad Demográfica (\textit{Demographic Parity}), la predicción del modelo debe ser estadísticamente independiente del atributo sensible:
+
+$$ P(\hat{y} = 1 \mid A = a) = P(\hat{y} = 1 \mid A = b) \quad \forall a, b \in \mathcal{A} $$
+
+De este modo, la tarea no se limita a maximizar el rendimiento predictivo (precisión), sino a explorar empíricamente el compromiso (\textit{trade-off}) entre la precisión y la equidad algorítmica, incorporando posteriormente técnicas de explicabilidad (XAI) para auditar las predicciones $\hat{y}$ a nivel global y local.
+
+\subsection{Dataset}
+
+Los datos utilizados en este trabajo proceden del \textit{dataset} \textit{COMPAS Recidivism}, publicado por ProPublica en 2016 a raíz de su investigación sobre el sistema de evaluación de riesgo \textit{Correctional Offender Management Profiling for Alternative Sanctions}, desarrollado por la empresa Northpointe (actualmente Equivant). El conjunto recoge registros administrativos del condado de Broward (Florida) correspondientes a personas fichadas entre 2013 y 2014, junto con su seguimiento posterior. La unidad de observación es, por tanto, un individuo en el momento del fichaje policial, y la etiqueta \texttt{two\_year\_recid} indica la existencia de un nuevo \emph{rearresto} dentro de los dos años siguientes, no necesariamente una condena firme; este matiz, aparentemente menor, es relevante porque acopla la variable objetivo al comportamiento del propio sistema policial que generó los datos. La Tabla~\ref{tab:dataset} resume las características principales del \textit{dataset}.
+
+\begin{table}[H]
+\centering
+\caption{Características del \textit{dataset} COMPAS original.}
+\label{tab:dataset}
+\small
+\begin{tabular}{@{}lp{10cm}@{}}
+\toprule
+\textbf{Característica} & \textbf{Valor} \\
+\midrule
+Fuente / enlace           & ProPublica (repositorio oficial en GitHub) \\
+Número de instancias      & 7214 registros originales[cite: 1] (se reducen a 6167 tras la limpieza). \\
+Número de \textit{features} & 53 variables originales[cite: 1] (se seleccionan 13 relevantes para el modelado). \\
+Variable objetivo         & \texttt{two\_year\_recid}[cite: 1] (Binaria: 1 = reincide, 0 = no reincide). \\
+Distribución de clases & Aprox. 55\,\% clase 0 / 45\,\% clase 1 (en el subconjunto final filtrado). \\
+Valores ausentes          & Sí, el 18.6\,\% de las celdas totales están vacías[cite: 1]. Estrategia: Eliminación de columnas con alto porcentaje de nulos (ej. \texttt{c\_arrest\_date} con 84.2\,\%[cite: 1]) y filtrado de filas mediante eliminación por lista (\textit{listwise deletion}). \\
+Licencia                  & Open Data / Dominio público. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+De las 53 variables originales se retuvieron 13 atributos que pueden agruparse en cuatro bloques funcionales: (i) \textbf{demográficos}, con \texttt{sex}, \texttt{age}, \texttt{age\_cat} y \texttt{race}, donde esta última desempeña el papel de atributo sensible $A$ definido en la Sección~3.1; (ii) \textbf{historial delictivo adulto y juvenil}, con \texttt{priors\_count}, \texttt{juv\_fel\_count}, \texttt{juv\_misd\_count} y \texttt{juv\_other\_count}; (iii) \textbf{caracterización del cargo actual}, con \texttt{c\_charge\_degree} y \texttt{c\_charge\_desc}, que distinguen entre delitos graves (\textit{felony}) y menores (\textit{misdemeanor}); y (iv) \textbf{salida del sistema COMPAS original}, con \texttt{decile\_score} y \texttt{score\_text}, conservadas exclusivamente como referencia para auditar el sesgo del sistema original frente al modelo propio (Sección~3.3) y excluidas del conjunto de \textit{features} de entrenamiento para evitar fugas de información.
+
+Finalmente, conviene destacar que el \textit{dataset} no fue recolectado en el marco de un estudio académico, sino reconstruido por periodistas a partir de registros públicos de la administración judicial. Esta procedencia explica tanto su valor como referente empírico para la literatura de \textit{fairness} como algunas de las limitaciones que se discuten posteriormente (Sección~6).
+
+\subsection{Análisis exploratorio (EDA)}
+
+El preprocesamiento inicial del conjunto de datos original reveló un alto volumen de valores ausentes (NaNs) y variables problemáticas. Se procedió a descartar todas las columnas con un porcentaje de nulos superior al 80\,\%, así como aquellas variables con el prefijo \texttt{r\_}, asociadas a la reincidencia posterior, para evitar la introducción de sesgos por \textit{data leakage}. Además, se aplicaron los filtros metodológicos del estudio de ProPublica (desfase temporal razonable entre arresto y evaluación, existencia de seguimiento real, exclusión de infracciones de tráfico ordinarias y exigencia de un veredicto válido emitido por el sistema COMPAS). La decisión de eliminar los valores nulos residuales en lugar de reconstruirlos mediante técnicas de imputación se fundamenta en un principio ético: en el contexto de los Sistemas de Soporte a la Decisión Judicial, la reconstrucción sintética de historiales penales resulta inaceptable, debiendo el modelo basarse de forma exclusiva en hechos fácticos y fehacientes.
+
+Una vez saneado el \textit{dataset}, el análisis univariado (Figura \ref{fig:eda_univariado}) mostró una distribución relativamente equilibrada de la variable objetivo (\texttt{two\_year\_recid}), lo que indica que no será estrictamente necesario aplicar técnicas de balanceo sintético de clases. Asimismo, la distribución de la variable demográfica sensible (\texttt{race}) refleja que la muestra está compuesta mayoritariamente por individuos afroamericanos y caucásicos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Images/eda_univariado.png}
+    \caption{Análisis univariado: Distribución de la variable objetivo (reincidencia a dos años) y de la variable protegida (raza).}
+    \label{fig:eda_univariado}
+\end{figure}
+
+No obstante, la problemática central del estudio afloró al cruzar la evaluación de riesgo original del sistema COMPAS (\texttt{decile\_score}) con dicha variable protegida. Como se observa en la Figura \ref{fig:eda_sesgo_racial}, la población caucásica concentra sus evaluaciones mayoritariamente en los niveles de riesgo más bajos, cayendo drásticamente en los deciles superiores. Por el contrario, la población afroamericana presenta una distribución mucho más uniforme, manteniendo frecuencias de clasificación alarmantemente altas en los niveles de riesgo máximo (deciles 8, 9 y 10).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Images/eda_sesgo_racial.png}
+    \caption{Distribución del nivel de riesgo (\textit{Decile Score}) asignado por COMPAS segmentado por los dos grupos demográficos mayoritarios.}
+    \label{fig:eda_sesgo_racial}
+\end{figure}
+
+La matriz de correlación (Figura \ref{fig:eda_correlacion}) confirma las hipótesis planteadas sobre la naturaleza del \textit{dataset} y sus sesgos intrínsecos. Por un lado, se valida la coherencia predictiva general: el historial delictivo adulto (\texttt{priors\_count}) y la edad (\texttt{age}) son los factores que mayor peso tienen en la puntuación de riesgo del sistema original (\texttt{decile\_score}), con correlaciones de $0.45$ y $-0.40$ respectivamente. Sin embargo, el hallazgo más crítico reside en la interacción entre la variable protegida y las predicciones del algoritmo. La matriz revela una disparidad evidente: la pertenencia al grupo demográfico afroamericano presenta una correlación positiva ($0.31$) con la puntuación de riesgo, mientras que para la población caucásica la correlación es negativa ($-0.20$). Estas métricas justifican plenamente la necesidad de aplicar técnicas de mitigación algorítmica (\textit{Fairness}) en el desarrollo del nuevo sistema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Images/eda_correlacion.png}
+    \caption{Matriz de correlación destacando las interacciones entre historial delictivo, atributos protegidos y la evaluación del sistema.}
+    \label{fig:eda_correlacion}
+\end{figure}
+
+Para profundizar en las dos variables de mayor impacto predictivo, se analizó su densidad en función de la variable objetivo (Figura \ref{fig:eda_densidades}). Las curvas demuestran visualmente cómo la madurez del individuo mitiga sustancialmente la probabilidad de volver a delinquir (concentrando a los reincidentes en las franjas más jóvenes), mientras que la acumulación de arrestos previos ensancha significativamente la curva de densidad hacia la reincidencia efectiva.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Images/eda_densidades_edad_priors.png}
+    \caption{Análisis de densidad bivariado de las variables \texttt{age} y \texttt{priors\_count} segmentadas por reincidencia.}
+    \label{fig:eda_densidades}
+\end{figure}
+
+Finalmente, se abordó el estudio de la dispersión de los datos (Figura \ref{fig:eda_outliers}). En las imágenes analizadas se observa un comportamiento demográfico natural en la variable de la edad, ya que presenta valores atípicos (\textit{outliers}) lógicos a partir de los 70 años. En el caso de los conteos juveniles y de arrestos previos, las distribuciones muestran cómo la mayoría de los acusados se concentra en cero o en muy pocos delitos previos. Sin embargo, existe una cola larga evidente: un grupo reducido pero significativo de reincidentes crónicos que superan el límite superior del rango intercuartílico (IQR), llegando a acumular hasta 40 arrestos previos en su etapa adulta o 20 delitos graves en su etapa juvenil.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Images/eda_outliers_priors_count.png}
+    \caption{Análisis de valores atípicos para la variable \texttt{priors\_count}. A la izquierda, el \textit{Box Plot} identifica la mediana y el rango intercuartílico; a la derecha, el \textit{Scatter Plot} ordenado muestra cómo los reincidentes crónicos superan significativamente el límite superior estadístico.}
+    \label{fig:eda_outliers}
+\end{figure}
+
+Dado que no existen \textit{outliers} que deriven de errores de recolección en el \textit{dataset}, no se eliminó a ningún individuo, ya que representan perfiles criminalísticos reales. Además, al basarse el nuevo modelo predictivo en algoritmos de tipo Árbol (como \textit{Random Forest}), se descartó la aplicación de técnicas de capeo (\textit{clipping}); la naturaleza de estos algoritmos permite definir fronteras de partición eficaces sin verse distorsionados por la magnitud extrema del historial delictivo.
+
+A modo de conclusión de esta fase exploratoria, todas las decisiones metodológicas justificadas (filtros de calidad oficial, tratamiento estricto de nulos, exclusión de variables con riesgo de \textit{data leakage} y selección de atributos) se han encapsulado en una única función modular de preprocesamiento (\texttt{load\_and\_clean\_compas}). Esta unificación garantiza la reproducibilidad del experimento, previniendo errores manuales y asegurando que las fases posteriores de \textit{Machine Learning} operen bajo los más estrictos estándares de rigor estadístico e integridad ética.
+
+\subsection{Problemáticas identificadas}
+
+A partir del análisis del \textit{dataset} y del contexto de uso del sistema en el ámbito penal, se han identificado las siguientes problemáticas críticas que deben ser abordadas para garantizar un despliegue ético y técnico:
+
+\begin{itemize}
+    \item \textbf{Sesgo Algorítmico y Falta de Equidad (\textit{Fairness}):} 
+    El contexto de uso real del sistema implica la toma de decisiones que afectan directamente a la libertad fundamental de los individuos. El \textit{dataset} COMPAS contiene atributos sensibles explícitos, principalmente la raza (\textit{race}), que han demostrado históricamente ser fuentes de disparidad en las tasas de error de falsos positivos entre diferentes grupos demográficos. 
+    Desde una perspectiva legal, el Reglamento de Inteligencia Artificial de la UE (\textit{AI Act}) clasifica los sistemas de evaluación de riesgos en la justicia como de \textbf{alto riesgo} (Anexo III). Esto impone la obligación estricta de implementar medidas de control de sesgos para evitar discriminaciones prohibidas por la Carta de los Derechos Fundamentales de la UE y el RGPD, los cuales exigen que el tratamiento de datos no resulte en resultados discriminatorios por motivos de origen étnico o racial.
+
+    \item \textbf{Opacidad del Modelo y Necesidad de Explicabilidad (\textit{Explainability}):} 
+    Dada la complejidad de las interacciones entre las variables socioeconómicas y los antecedentes penales en el \textit{dataset} (ej. la correlación entre \textit{priors\_count} y \textit{age}), los modelos con mayor rendimiento predictivo suelen operar como ``cajas negras''. En un entorno judicial, el derecho al debido proceso exige que cualquier decisión automatizada sea justificable y comprensible para las partes implicadas (jueces, abogados y acusados). 
+    La problemática reside en la tensión entre la precisión técnica y la transparencia operativa. Bajo el RGPD (Art. 22), los ciudadanos tienen el derecho a recibir una \textbf{explicación significativa} sobre la lógica aplicada en decisiones automatizadas que produzcan efectos jurídicos. Por tanto, es imperativo aplicar técnicas de XAI que permitan descomponer la influencia de cada variable en la predicción individual de riesgo para garantizar la seguridad jurídica del sistema.
+\end{itemize}
+
+
+% ============================================================
+\section{Metodología}
+\label{sec:metodologia}
+% ============================================================
+
+\subsection{Preprocesamiento de Datos}
+\label{subsec:preprocesamiento}
+
+Tras la fase de Análisis Exploratorio de Datos (EDA) y la limpieza inicial de la muestra siguiendo los criterios de \textit{ProPublica}, se procedió a la construcción de un \textit{pipeline} de transformación robusto. El objetivo fundamental de esta etapa es mitigar el sesgo técnico, prevenir el \textit{data leakage} (fuga de datos) y garantizar la estabilidad numérica de los algoritmos de aprendizaje automático.
+
+\subsubsection{División del Conjunto de Datos y Estratificación}
+
+En primera instancia, el dataset fue segmentado en conjuntos de entrenamiento ($70\%$) y prueba ($30\%$). Para preservar la representatividad de las clases y de los grupos demográficos sensibles, se aplicó una estratificación multidimensional. 
+
+Dada la naturaleza del problema, la estratificación no solo se realizó sobre la variable objetivo ($y$: \textit{two\_year\_recid}), sino también sobre la variable protectora \textit{race}. Esta decisión es crítica en estudios de \textit{fairness} (equidad), ya que garantiza que las distribuciones de probabilidad de los grupos protegidos sean equivalentes en ambos conjuntos, permitiendo una evaluación imparcial de las métricas de disparidad.
+
+\subsubsection{Tratamiento de Valores Ausentes (Imputación)}
+
+La estrategia para el manejo de valores nulos se diseñó en dos fases complementarias, equilibrando el rigor ético durante el entrenamiento con la resiliencia técnica en producción. En primera instancia, durante la carga y limpieza inicial de los datos, se aplicó un filtrado estricto mediante la eliminación de registros incompletos (\textit{listwise deletion} o \texttt{dropna}). Esta decisión metodológica garantiza que el modelo se ajuste exclusivamente sobre historiales fácticos y completos, alineándose con los estándares de \textit{ProPublica}, ya que la reconstrucción sintética de datos judiciales y perfiles penales resulta éticamente inaceptable.
+
+No obstante, como salvaguarda de programación defensiva para la fase de inferencia (en caso de que el sistema reciba datos futuros con campos en blanco), se integró una estrategia de imputación univariante de respaldo dentro del \textit{ColumnTransformer}. Si el \textit{pipeline} detecta valores ausentes en producción, evitará un fallo crítico del sistema aplicando las siguientes reglas de emergencia:
+\begin{itemize}
+    \item \textbf{Variables numéricas:} Se utiliza la imputación por la mediana. Se optó por esta medida de tendencia central debido a la fuerte asimetría observada en variables como \textit{priors\_count} y \textit{juv\_fel\_count}, actuando como un estimador robusto frente a valores atípicos.
+    \item \textbf{Variables categóricas:} Se emplea la imputación por el valor más frecuente (moda), garantizando la consistencia semántica de categorías como \textit{c\_charge\_degree}.
+\end{itemize}
+
+\subsubsection{Codificación de Variables Categóricas}
+
+Para transformar los atributos cualitativos en tensores numéricos procesables por los modelos, se aplicó una codificación \textit{One-Hot Encoding} (OHE). Con el fin de evitar la multicolinealidad, conocida como la \textit{trampa de la variable ficticia} (dummy variable trap), se eliminó la primera categoría de cada atributo codificado ($k-1$ variables). Esto resulta esencial para modelos lineales y redes neuronales, donde la redundancia de información puede derivar en una matriz de diseño singular o inestable.
+
+\subsubsection{Normalización de Atributos Numéricos}
+
+Considerando que los modelos de predicción de reincidencia suelen basarse en funciones de distancia o gradientes, la disparidad de magnitudes entre variables (ej. \textit{age} vs \textit{juv\_fel\_count}) puede sesgar el aprendizaje. Se aplicó una estandarización de \textit{Z-score}, definida matemáticamente como:
+
+\begin{equation}
+    z = \frac{x - \mu}{\sigma}
+\end{equation}
+
+Donde $\mu$ representa la media aritmética y $\sigma$ la desviación estándar del conjunto de entrenamiento. Es imperativo destacar que los parámetros $\mu$ y $\sigma$ fueron calculados exclusivamente sobre el conjunto de \textit{train} y extrapolados al de \textit{test}, evitando así la contaminación de información del futuro hacia el modelo.
+
+\subsubsection{Construcción del Transformer}
+
+Todas las transformaciones anteriores fueron encapsuladas mediante un \textit{ColumnTransformer} de Scikit-Learn. Esta arquitectura de software garantiza la reproducibilidad del experimento y asegura que cualquier dato nuevo que ingrese al sistema sea procesado bajo los mismos criterios estadísticos, manteniendo la coherencia del flujo de trabajo de aprendizaje automático.
+
+\subsection{Modelo \textit{baseline}}
+\label{subsec:metodologia_baseline}
+
+El modelo \textit{baseline} cumple en este estudio un doble propósito metodológico: por un lado, actúa como representante del estado del arte predictivo (las ''cajas negras'' utilizadas habitualmente en la industria) y, por otro, fija el techo de utilidad sobre el cual se cuantificará posteriormente el coste de las restricciones de equidad (Sección~\ref{subsec:mitigacion_sesgo}). Dada esta función de referencia, su selección no se delega a una elección \textit{a priori}, sino que se aborda como un problema empírico: se evalúa de forma comparativa una batería de familias algorítmicas representativas y se escoge la de mayor capacidad de generalización bajo un protocolo idéntico.
+
+\subsubsection{Familias de modelos consideradas}
+
+Con el objetivo de cubrir un espectro amplio de sesgo inductivo, se han incluido cinco algoritmos pertenecientes a paradigmas claramente diferenciados de aprendizaje supervisado:
+
+\begin{itemize}
+    \item \textbf{Regresión Logística} (\textit{lineal-paramétrico}): clasificador lineal con regularización $L_2$, utilizado como referencia interpretable de baja complejidad.
+    \item \textbf{Árbol de Decisión} (\textit{no-lineal, no ensamblado}): modelo basado en particiones recursivas; permite contrastar el rendimiento de un único estimador frente a sus versiones ensambladas.
+    \item \textbf{Random Forest} (\textit{ensamblado por \textit{bagging}}): combinación de árboles entrenados sobre muestras \textit{bootstrap}, con el objetivo de reducir la varianza del estimador.
+    \item \textbf{Support Vector Machine} (\textit{basado en \textit{kernels}}): explora fronteras de decisión no lineales mediante el truco del \textit{kernel} (RBF y lineal), con probabilidad calibrada para permitir el cálculo de AUC.
+    \item \textbf{XGBoost} (\textit{ensamblado por \textit{boosting}}): ensamblado secuencial con regularización explícita, representativo del estado del arte en datos tabulares ruidosos.
+\end{itemize}
+
+\subsubsection{Protocolo común de evaluación}
+
+Para garantizar que la comparación entre familias sea justa y reproducible, todos los candidatos se entrenaron bajo un mismo protocolo experimental encapsulado en una \textit{Pipeline} de Scikit-Learn que enlaza el \textit{ColumnTransformer} descrito en la Sección~4.1 con el clasificador, evitando así cualquier fuga de información entre los pliegues de validación.
+
+La optimización de hiperparámetros se realiza mediante \textbf{\textit{Grid Search} exhaustivo} sobre el subconjunto de \textit{train} (70\,\% de los datos), validado con una estrategia de \textbf{\textit{Stratified K-Fold} con $K=5$} y semilla fija ($\texttt{random\_state}=42$), que preserva la proporción de la clase positiva en cada partición. El estimador se reajusta (\texttt{refit}) sobre el mejor candidato según la métrica principal AUC-ROC, registrando también \textit{Accuracy}, $F_1$, \textit{Precision} y \textit{Recall} como métricas secundarias. La elección del AUC-ROC como criterio rector responde a su insensibilidad al umbral de decisión y al ligero desbalance de clases del \textit{dataset}.
+
+La Tabla~\ref{tab:espacios_hiperparametros} resume los espacios de búsqueda explorados para cada familia, diseñados para cubrir tanto regímenes de alta regularización como configuraciones de mayor capacidad.
+
+\begin{table}[H]
+    \centering
+    \footnotesize
+    \begin{tabular}{p{3.2cm} p{10cm} r}
+        \toprule
+        \textbf{Modelo} & \textbf{Hiperparámetros explorados} & \textbf{Combinaciones} \\
+        \midrule
+        Regresión Logística & $C \in \{10^{-3},\dots,10^{2}\}$; \texttt{penalty}=$L_2$; \texttt{class\_weight} $\in \{\text{None},\text{balanced}\}$ & 12 \\
+        Árbol de Decisión & \texttt{criterion} $\in \{\text{gini},\text{entropy}\}$; \texttt{max\_depth} $\in \{2,3,4,5,7,\text{None}\}$; \texttt{min\_samples\_split}, \texttt{min\_samples\_leaf} y \texttt{class\_weight} & 384 \\
+        Random Forest & \texttt{n\_estimators} $\in \{50,\dots,300\}$; \texttt{max\_depth} $\in \{2,3,5,7,10\}$; \texttt{max\_features} $\in \{\text{sqrt},\text{log2},0.5\}$; \texttt{class\_weight} & 180 \\
+        SVM & $C \in \{0.1,1,10\}$; \texttt{kernel} $\in \{\text{linear},\text{rbf}\}$; \texttt{class\_weight} & 12 \\
+        XGBoost & \texttt{n\_estimators}, \texttt{max\_depth}, \texttt{learning\_rate}, \texttt{subsample}, \texttt{colsample\_bytree} & 576 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Espacios de búsqueda de hiperparámetros explorados mediante \textit{Grid Search} con validación cruzada estratificada $K=5$.}
+    \label{tab:espacios_hiperparametros}
+\end{table}
+
+En total se evaluaron $1\,164$ configuraciones distintas, equivalentes a $5\,820$ ajustes de modelo. Los resultados de esta comparativa se discuten en la Sección~\ref{subsec:resultados_baseline}, donde XGBoost se consolida formalmente como el modelo \textit{baseline} al alcanzar el mayor AUC-ROC.
+
+\subsubsection{Adecuación teórica del candidato seleccionado}
+
+Más allá del rendimiento numérico, la arquitectura de XGBoost resulta especialmente adecuada desde un punto de vista teórico-metodológico para modelar la reincidencia por las siguientes razones:
+
+\begin{itemize}
+    \item \textbf{Gestión de interacciones no lineales:} A diferencia de los modelos lineales estadísticos tradicionales, los ensamblados basados en árboles de decisión pueden capturar interacciones paramétricas complejas de forma nativa (por ejemplo, el efecto cruzado entre la edad temprana y un alto número de delitos juveniles previos).
+    \item \textbf{Robustez frente al ruido humano (\textit{Overfitting}):} Los datos derivados del comportamiento humano y de la administración de justicia penal poseen un nivel extremo de ruido estocástico. XGBoost proporciona mecanismos avanzados de regularización (\texttt{subsample}, \texttt{colsample\_bytree} y profundidad limitada), que fuerzan a la arquitectura a construir un bosque de árboles ''débiles y simples'' y evitan la memorización de casos atípicos.
+    \item \textbf{Compatibilidad con la mitigación \textit{in-processing}:} la formulación basada en gradiente exponencial empleada en la Sección~\ref{subsec:mitigacion_sesgo} requiere un clasificador base reentrenable bajo pesos muestrales arbitrarios, requisito que XGBoost satisface de forma nativa.
+\end{itemize}
+
+En definitiva, este modelo \textit{baseline} representa fielmente el estado del arte predictivo: una herramienta altamente eficaz en la minimización del error de clasificación, pero que, sin un marco de supervisión ética activa, hereda y amplifica silenciosamente las disparidades raciales codificadas en los datos de entrada.
+
+
+\subsection{Tratamiento de la problemática 1: Mitigación de Sesgo Multidimensional mediante Optimización Restringida}
+\label{subsec:mitigacion_sesgo}
+
+La reducción del sesgo en el modelo COMPAS presenta un desafío técnico fundamental: el sesgo no es una propiedad aislada de un único atributo, sino un fenómeno sistémico que impregna múltiples dimensiones de los datos. Si bien la raza (\textit{race}) se identifica como el atributo sensible primario siguiendo la investigación de \textit{ProPublica}, factores como la edad y el historial delictivo temprano actúan como variables latentes que pueden perpetuar la discriminación incluso si se eliminan las etiquetas raciales.
+
+Por ello, en lugar de un preprocesamiento de ''ceguera al color'' (\textit{fairness through unawareness}), este trabajo propone un enfoque de \textbf{Mitigación Proactiva} basada en el aprendizaje con restricciones (\textit{in-processing}). El objetivo es ''obligar'' al modelo a encontrar patrones de reincidencia que sean estadísticamente independientes de la identidad del individuo.
+
+\subsubsection{Metodología: Reducción de Gradiente Exponencial}
+
+Se ha seleccionado el algoritmo de \textbf{Reducción de Gradiente Exponencial} (\textit{Exponentiated Gradient}) para intervenir directamente en el ciclo de entrenamiento del clasificador \textit{XGBoost}. Esta técnica no se limita a observar el sesgo, sino que lo trata como un problema de optimización de juego de suma cero entre dos entidades matemáticas:
+
+\begin{enumerate}
+    \item \textbf{El Clasificador:} Cuyo objetivo es minimizar el error de predicción ($\mathcal{L}$).
+    \item \textbf{El Auditor (Adversario):} Que impone penalizaciones económicas al clasificador cada vez que detecta una violación de la equidad entre grupos.
+\end{enumerate}
+
+
+
+\subsubsection{Formulación Matemática y Criterio de Decisión}
+
+Para tratar el sesgo, el algoritmo busca minimizar la pérdida del modelo sujeta a restricciones de \textbf{Equalized Odds} (Igualdad de Probabilidades). Formalmente, buscamos un clasificador $f$ que resuelva:
+
+\begin{equation}
+    \min_{f} \mathcal{L}(f) \quad \text{s.a.} \quad \gamma_a(f) - \gamma_b(f) \leq \epsilon \quad \forall a,b \in \mathcal{A}
+\end{equation}
+
+Donde $\gamma$ representa la tasa de error (específicamente la Tasa de Falsos Positivos, FPR, y la Tasa de Verdaderos Positivos, TPR) condicionada al grupo sensible. El parámetro $\epsilon$ actúa como el ''presupuesto de justicia'', permitiéndonos definir qué nivel de disparidad es tolerable para el sistema. 
+
+Al igualar simultáneamente el FPR y el TPR, garantizamos que el sistema no ''aprenda'' a ser más erróneo con los individuos de una raza específica, mitigando así la tendencia histórica del algoritmo original a castigar injustamente a sujetos que no reinciden.
+
+\subsubsection{Justificación de la Robustez Multidimensional}
+
+Se ha optado por esta técnica \textit{in-processing} por su capacidad para manejar la \textbf{discriminación indirecta}. Al intervenir en el gradiente del modelo, el algoritmo detecta y neutraliza las correlaciones ocultas en variables como el número de arrestos previos o la edad del primer arresto, que a menudo sirven como ''proxies'' de la raza. 
+
+Este enfoque no solo garantiza el cumplimiento de los estándares éticos de este estudio, sino que se alinea con los requisitos de \textbf{seguridad algorítmica y control de sesgos} exigidos por el \textit{AI Act} de la Unión Europea para sistemas de alto riesgo en la justicia penal. De este modo, la solución técnica propuesta transita de una simple predicción estadística hacia una evaluación de riesgo fundamentada en principios de justicia distributiva.
+
+
+
+\subsection{Tratamiento de la problemática 2: Explicabilidad del modelo (XAI)}
+
+Con el objetivo de mejorar la interpretabilidad del sistema de predicción, se aplicaron distintas técnicas de explicabilidad sobre el modelo baseline definido previamente. Estas técnicas permiten analizar tanto la influencia global de las variables sobre el comportamiento del clasificador como las contribuciones específicas asociadas a predicciones individuales.
+
+Dado el contexto judicial del problema, la incorporación de métodos XAI resulta especialmente relevante para comprender qué factores influyen en la estimación del riesgo de reincidencia y evaluar si las decisiones generadas por el modelo pueden interpretarse de forma transparente y consistente.
+
+\subsubsection{Explicabilidad global mediante SHAP}
+
+Para analizar el comportamiento general del modelo baseline se aplicó la técnica \textit{SHAP} (\textit{SHapley Additive exPlanations}), un método de explicabilidad \textit{post-hoc} basado en teoría de juegos cooperativos. SHAP permite descomponer la predicción del modelo en contribuciones individuales asociadas a cada variable de entrada, proporcionando una medida cuantitativa del impacto de cada característica sobre la salida del sistema.
+
+Formalmente, el valor SHAP de una característica \(i\) representa su contribución media marginal sobre la predicción del modelo considerando todas las posibles combinaciones de variables:
+
+\[
+\phi_i = \sum_{S \subseteq F \setminus \{i\}}
+\frac{|S|!(|F|-|S|-1)!}{|F|!}
+\left[f(S \cup \{i\}) - f(S)\right]
+\]
+
+donde \(F\) representa el conjunto total de características y \(S\) los subconjuntos considerados durante el cálculo de contribuciones.
+
+En este trabajo se utilizó \textit{TreeExplainer}, una implementación optimizada de SHAP para modelos basados en árboles, especialmente adecuada para arquitecturas como \textit{XGBoost}. A nivel global, SHAP permite identificar qué variables tienen mayor influencia promedio sobre las predicciones del modelo, facilitando el análisis de factores relevantes en la estimación del riesgo de reincidencia.
+
+La utilización de SHAP resulta especialmente adecuada en el contexto judicial, ya que permite auditar el comportamiento del sistema y detectar posibles dependencias respecto a atributos sensibles. No obstante, una limitación importante de SHAP es que sus implementaciones estándar suelen asumir independencia entre variables, lo que puede generar atribuciones poco precisas cuando existen correlaciones fuertes entre características del dataset.
+
+\subsubsection{Explicabilidad local mediante SHAP}
+
+Además del análisis global, se aplicaron explicaciones locales mediante SHAP con el objetivo de interpretar predicciones individuales generadas por el modelo. Para ello, se utilizaron representaciones tipo \textit{waterfall plot}, donde cada variable desplaza progresivamente la predicción desde un valor base hasta la salida final del clasificador.
+
+Este enfoque permite analizar qué factores incrementan o reducen la probabilidad de reincidencia para un individuo concreto, proporcionando una explicación interpretable de la decisión del sistema. En el contexto del dataset COMPAS, este tipo de análisis resulta especialmente relevante debido al impacto potencial de las predicciones sobre decisiones judiciales reales.
+
+La explicabilidad local basada en SHAP presenta además la ventaja de mantener coherencia con el análisis global, ya que las contribuciones individuales se calculan utilizando la misma formulación matemática. Sin embargo, las explicaciones locales siguen estando condicionadas por las dependencias existentes entre variables, por lo que deben interpretarse con cautela en presencia de atributos altamente correlacionados.
+
+\subsubsection{Explicabilidad local mediante LIME}
+
+Como técnica complementaria de explicabilidad local se utilizó \textit{LIME} (\textit{Local Interpretable Model-agnostic Explanations}), un método \textit{model-agnostic} que aproxima localmente el comportamiento del modelo mediante clasificadores interpretables simples, generalmente regresiones lineales.
+
+A diferencia de SHAP, LIME no intenta explicar el funcionamiento completo del modelo original, sino construir una aproximación interpretable en el entorno cercano a una instancia concreta. Para ello, el método genera perturbaciones alrededor del individuo analizado y ajusta un modelo lineal ponderado según la proximidad a la muestra original.
+
+La optimización de LIME puede expresarse como:
+
+\[
+\xi(x) = \arg\min_{g \in G} L(f, g, \pi_x) + \Omega(g)
+\]
+
+donde \(f\) representa el modelo complejo original, \(g\) el modelo interpretable aproximado, \(\pi_x\) una medida de proximidad local y \(\Omega(g)\) un término de complejidad que favorece explicaciones simples.
+
+La principal ventaja de LIME es su independencia respecto al modelo utilizado, permitiendo generar explicaciones locales sobre cualquier clasificador. No obstante, durante el análisis experimental se observó que las explicaciones generadas sobre variables categóricas codificadas mediante \textit{One-Hot Encoding} resultaban menos intuitivas que las obtenidas mediante SHAP, debido a la generación automática de reglas locales discretizadas. Por ello, SHAP proporcionó explicaciones visualmente más consistentes e interpretables para el contexto del problema abordado.
+
+
+\subsubsection{Análisis de dependencias entre variables mediante SHAP}
+
+Una de las principales limitaciones de las técnicas de explicabilidad basadas en SHAP es que, en sus formulaciones estándar, pueden asumir independencia entre las variables de entrada. Esta hipótesis no siempre se cumple en datasets reales como COMPAS, donde atributos como la edad, el número de antecedentes o determinadas variables demográficas pueden presentar relaciones entre sí. En estos casos, la atribución de importancia a cada característica puede verse afectada, ya que el modelo puede repartir la contribución entre variables correlacionadas o asignar importancia a variables que actúan como aproximaciones indirectas de otras.
+
+Desde un punto de vista teórico, las variantes de \textit{Conditional SHAP} buscan resolver este problema sustituyendo la evaluación marginal de las variables por una evaluación condicionada a las dependencias existentes entre características. De forma simplificada, la contribución de una variable se calcula teniendo en cuenta la distribución condicional del resto de atributos:
+
+\[
+\phi_i^{cond} =
+\sum_{S \subseteq F \setminus \{i\}}
+\frac{|S|!(|F|-|S|-1)!}{|F|!}
+\left[
+\mathbb{E}(f(X) \mid X_{S \cup \{i\}} = x_{S \cup \{i\}})
+-
+\mathbb{E}(f(X) \mid X_S = x_S)
+\right]
+\]
+
+donde la diferencia principal respecto a SHAP estándar es que la contribución se estima respetando las relaciones estadísticas entre variables, en lugar de asumir que todas ellas pueden variar de forma independiente.
+
+En este trabajo no se implementó una versión completa de \textit{Conditional SHAP} basada en cópulas, ya que su aplicación requiere modelar explícitamente las distribuciones condicionales entre variables y aumenta considerablemente la complejidad del análisis. En su lugar, se emplearon \textit{SHAP dependence plots} como aproximación práctica para estudiar cómo varía la contribución de una característica en función de su propio valor y de su interacción con otras variables.
+
+Este análisis permite estudiar cómo cambia el impacto de una variable sobre la predicción y si dicho efecto depende de otras características del individuo. Por ejemplo, en el caso de \texttt{priors\_count}, se puede observar no solo su relación con el riesgo de reincidencia, sino también posibles interacciones con variables como \texttt{age} o \texttt{race}.
+
+
+
+\subsection{Protocolo de evaluación}
+
+Para garantizar la solidez estadística de los resultados empíricos y mitigar el riesgo de sobreajuste (\textit{overfitting}), la evaluación predictiva de los modelos se fundamenta en un protocolo de Validación Cruzada Estratificada de 5 particiones. La estratificación se realiza asegurando que la proporción original de la variable objetivo (reincidencia a dos años) se mantenga constante en cada uno de los pliegues de entrenamiento y prueba, permitiendo mediciones de rendimiento consistentes en todas las iteraciones.
+
+Dada la naturaleza criminológica del \textit{dataset} COMPAS, donde los costes sociales de los errores de clasificación son altamente asimétricos, evaluar el rendimiento de los algoritmos basándose exclusivamente en la exactitud global (\textit{Accuracy}) resulta metodológicamente insuficiente y potencialmente engañoso. Para obtener una evaluación integral del comportamiento del modelo base, se ha definido un protocolo multimétrica robusto:
+
+\begin{itemize}
+    \item \textbf{Área Bajo la Curva ROC (AUC-ROC):} Se establece como la métrica principal para la selección y optimización de hiperparámetros. Al ser independiente del umbral de clasificación, resulta idónea para mitigar los efectos del desbalance de datos, evaluando la probabilidad de que el modelo clasifique a un reincidente real con un nivel de riesgo mayor que a un no reincidente.
+    \item \textbf{F1-Score, Precision y Recall:} El uso del F1-Score (la media armónica entre la precisión y la exhaustividad) es vital en el contexto de la justicia penal para encontrar un punto de equilibrio ético y operativo. La Precisión mide la certidumbre del modelo al emitir una predicción de alto riesgo (minimizando los falsos positivos, que se traducen en medidas punitivas injustificadas). Por su parte, el Recall evalúa la capacidad del algoritmo para detectar a la mayor cantidad posible de infractores reales (minimizando los falsos negativos, que representan un peligro latente para la seguridad pública).
+\end{itemize}
+
+\subsubsection{Protocolo de Evaluación de Equidad: De la Paridad al Error Condicional}
+
+La auditoría de equidad en sistemas de riesgo criminal no puede reducirse a una observación de la precisión agregada. El caso \textit{COMPAS} \cite{angwin2016machine} marcó un hito al demostrar que un modelo puede ser estadísticamente preciso y, simultáneamente, sistemáticamente injusto. La narrativa del sesgo algorítmico comenzó cuestionando la \textbf{Paridad Demográfica}, la cual exige que la tasa de predicción positiva sea igual entre grupos ($P(\hat{y}=1 \mid A=a) = P(\hat{y}=1 \mid A=b)$). Sin embargo, este enfoque es ciego al comportamiento real: si las tasas base de reincidencia difieren debido a factores socioeconómicos sistémicos, forzar la paridad demográfica puede degradar la utilidad del modelo o introducir nuevas injusticias.
+
+La verdadera problemática revelada por la investigación de \textit{ProPublica} \cite{angwin2016machine} y formalizada por \textit{Chouldechova} \cite{chouldechova2017fair} no residía en cuántas personas eran marcadas como reincidentes, sino en la \textbf{naturaleza de los errores}. Se descubrió que el algoritmo castigaba desproporcionadamente a los individuos afroamericanos con una Tasa de Falsos Positivos (FPR) mucho mayor, mientras que era más indulgente con los individuos caucásicos mediante una mayor Tasa de Falsos Negativos (FNR).
+
+Por ello, este estudio adopta el criterio de \textbf{Equalized Odds} (Igualdad de Probabilidades). Esta métrica exige que los errores se distribuyan de forma equitativa, garantizando que la capacidad del modelo para predecir correctamente la reincidencia (TPR) y su tendencia a equivocarse injustamente (FPR) sean independientes del atributo racial. Bajo esta premisa, se definen las siguientes métricas de evaluación:
+
+\begin{itemize}
+    \item \textbf{Equalized Odds Difference:} Representa el compromiso técnico con la justicia distributiva. Mide la disparidad máxima entre las tasas de Verdaderos Positivos (TPR) y Falsos Positivos (FPR) entre los grupos analizados. Su objetivo es minimizar la función:
+    \begin{equation}
+        \max_{y \in \{0,1\}} \max_{a,b \in \mathcal{A}} |P(\hat{y}=1 \mid A=a, y=y) - P(\hat{y}=1 \mid A=b, y=y)|
+    \end{equation}
+    Un valor cercano a cero indica que el modelo es igual de preciso e igual de erróneo con todos los grupos \cite{karimi2021enhancing}.
+
+    \item \textbf{Demographic Parity Difference:} Actúa como indicador de la equidad distributiva directa en las asignaciones de riesgo. Mide la diferencia absoluta máxima en la tasa de selección (la proporción de individuos clasificados como propensos a la reincidencia) entre cualquier par de grupos demográficos. Su objetivo es evaluar la función:
+    \begin{equation}
+        \max_{a,b \in \mathcal{A}} |P(\hat{y}=1 \mid A=a) - P(\hat{y}=1 \mid A=b)|
+    \end{equation}
+    Un valor cercano a cero representa el cumplimiento empírico de la paridad demográfica pura, donde la probabilidad de recibir una etiqueta punitiva es estadísticamente independiente de la pertenencia grupal \cite{karimi2021enhancing}.
+\end{itemize}
+
+% ============================================================
+\section{Experimentos y Resultados}
+\label{sec:resultados}
+% ============================================================
+
+\subsection{Configuración experimental}
+
+Los experimentos se han desarrollado en un entorno de programación Python, utilizando el ecosistema estándar de análisis de datos (\texttt{pandas}, \texttt{numpy}) y la librería \texttt{scikit-learn} para el modelado y evaluación cruzada. Para garantizar la reproducibilidad exacta de los particionados, imputaciones y optimización de hiperparámetros, se ha fijado una semilla aleatoria global.
+
+\begin{lstlisting}[caption={Semilla aleatoria y dependencias principales en el entorno de experimentación.}, language=Python]
+import numpy as np
+import sklearn
+import xgboost
+import fairlearn
+
+# Fijar semilla para reproducibilidad
+SEED = 42
+np.random.seed(SEED)
+
+# Versiones de dependencias clave
+# scikit-learn == 1.3.0
+# xgboost == 2.0.0
+# fairlearn == 0.9.0
+\end{lstlisting}
+
+\subsection{Selección empírica del modelo \textit{baseline}}
+\label{subsec:resultados_baseline}
+
+De forma preliminar a la aplicación de técnicas de \textit{Fairness}, se llevó a cabo una evaluación cruzada exhaustiva (\textit{Grid Search} con \textit{Stratified 5-Fold CV}) para determinar el límite predictivo del conjunto de datos. Se contrastó el algoritmo XGBoost contra otras cuatro arquitecturas estándar documentadas en la literatura criminológica: Regresión Logística, Árboles de Decisión, \textit{Random Forest} y Máquinas de Vectores de Soporte (SVM). 
+
+Como se observa en la Tabla~\ref{tab:comparativa_modelos}, los resultados empíricos demostraron que XGBoost presenta la mayor capacidad de generalización. Al alcanzar el máximo valor en la métrica principal de evaluación (AUC-ROC de $0.7406$), se consolidó formalmente como el modelo \textit{baseline} del estudio.
+
+\begin{table}[H]
+\centering
+\caption{Comparativa de rendimiento predictivo de los modelos evaluados mediante Validación Cruzada Estratificada (5-Folds). Los valores óptimos para cada métrica se destacan en negrita.}
+\label{tab:comparativa_modelos}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Modelo} & \textbf{AUC-ROC} & \textbf{Accuracy} & \textbf{F1-Score} & \textbf{Precision} & \textbf{Recall} \\
+\midrule
+XGBoost & \textbf{0.7406} & 0.6912 & 0.6414 & \textbf{0.6807} & 0.6068 \\
+Random Forest & 0.7370 & \textbf{0.6921} & \textbf{0.6529} & 0.6710 & 0.6363 \\
+SVM & 0.7315 & 0.6845 & 0.6315 & 0.6746 & 0.5941 \\
+Regresión Logística & 0.7305 & 0.6787 & 0.6425 & 0.6514 & 0.6343 \\
+Árbol de Decisión & 0.7271 & 0.6870 & 0.6496 & 0.6632 & \textbf{0.6374} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Resultados específicos por problemática}
+\subsubsection{Evaluación de Equidad Algorítmica y Mitigación In-Processing con Ajuste Clínico de Tolerancia}
+\label{subsubsec:resultados_fairness}
+
+Para auditar exhaustivamente el comportamiento ético del modelo predictivo optimizado (XGBoost), se procedió a realizar un análisis forense multidimensional utilizando el entorno \textit{Fairlearn}. Con el fin de maximizar la eficacia de la intervención, se implementó un proceso de búsqueda en rejilla (\textit{Grid Search}) sobre el parámetro de tolerancia $\epsilon$ del algoritmo de \textbf{Reducción de Gradiente Exponencial} (\textit{Exponentiated Gradient}), evaluando un rango estricto de restricciones lineales ($\epsilon \in \{0.005, 0.01, 0.02, 0.05, 0.1\}$) bajo el criterio de \textit{Equalized Odds} y empleando la raza como atributo sensible de mitigación primario.
+
+Para seleccionar de manera automatizada y rigurosa la configuración óptima sin incurrir en sesgos de selección visual, se definió una métrica de compromiso denominada \textit{Trade off Score}, parametrizada de manera directa como la diferencia entre la exactitud global del sistema y su brecha remanente de igualdad de probabilidades ($\text{Accuracy} - \text{Equalized Odds Gap}$). El escrutinio de la rejilla determinó que el mejor balance operativo se alcanza de forma unívoca con un umbral de tolerancia $\epsilon = 0.02$, configuración que logra comprimir drásticamente la discriminación algorítmica sin provocar un colapso destructivo en las capacidades predictivas del clasificador penal.
+
+En primera instancia, se evaluó el impacto de esta restricción ética óptima sobre la utilidad general del sistema (\textit{Accuracy-Fairness Trade-off}), contrastando los resultados del XGBoost base altamente regularizado frente a la variante curada de Fairlearn (ver Tabla~\ref{tab:rendimiento_predictivo}).
+
+\begin{table}[H]
+\centering
+\caption{Comparativa de rendimiento predictivo absoluto global y por clase crítica.}
+\label{tab:rendimiento_predictivo}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lccccc}
+\hline
+\textbf{Configuración del Sistema} & \textbf{Accuracy} & \textbf{Precision (C1)} & \textbf{Recall (C1)} & \textbf{F1-Score} & \textbf{AUC-ROC} \\
+\hline
+Modelo Base (\textit{XGBoost}) & 0.6971 & 0.6900 & 0.6000 & 0.6452 & 0.7450 \\
+Modelo Mitigado (\textit{Gradiente Exponencial}, $\epsilon=0.02$) & 0.6803 & 0.6800 & 0.5600 & 0.6151 & N/A\textsuperscript{1} \\
+\hline
+\multicolumn{6}{l}{\scriptsize \textsuperscript{1} No aplicable dada la naturaleza combinatoria y estocástica del proceso de mitigación \textit{in-processing}.}
+\end{tabular}
+}
+\end{table}
+
+Al aplicar el mitigador, la exactitud global experimenta una degradación controlada y moderada del $1.68\%$ ($0.6971$ frente a $0.6803$), acompañada de una contracción del $3.01\%$ en el F1-Score general. Analizando la clase crítica (Clase 1: Reincidentes), la precisión se mantiene prácticamente intacta sacrificando únicamente un punto porcentual ($0.6900$ vs $0.6800$), mientras que la sensibilidad o poder de detección (\textit{Recall}) asume el costo principal de la restricción ética descendiendo del $60.00\%$ al $56.00\%$. Este margen de pérdida es metodológicamente aceptable y se encuentra plenamente justificado en entornos de justicia penal de alto riesgo, siempre que la contrapartida en términos de justicia distributiva sea lo suficientemente significativa.
+
+Para auditar si este sacrificio predictivo conllevó la neutralización efectiva de la injusticia, se recalcularon las brechas de desigualdad máximas entre subgrupos demográficos directos e interseccionales (Gaps globales), cuyos nuevos valores se presentan en la Tabla~\ref{tab:resumen_gaps}.
+
+\begin{table}[H]
+\centering
+\caption{Resumen comparativo de brechas globales de equidad (Gaps) antes y después de la mitigación.}
+\label{tab:resumen_gaps}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}lcccc@{}}
+\hline
+\textbf{Dimensión Demográfica} & \multicolumn{2}{c}{\textbf{Demographic Parity Gap}} & \multicolumn{2}{c}{\textbf{Equalized Odds Gap}} \\
+\cline{2-3} \cline{4-5}
+& \textbf{Base (Sesgado)} & \textbf{Mitigado (Justo)} & \textbf{Base (Sesgado)} & \textbf{Mitigado (Justo)} \\
+\hline
+Raza (\textit{race}) & 0.2869 & 0.0854 & 0.2812 & 0.0890 \\
+Género (\textit{sex}) & 0.2257 & 0.1871 & 0.2117 & 0.1637 \\
+Grupo de Edad (\textit{age\_group}) & 0.4191 & 0.2951 & 0.3566 & 0.2677 \\
+Interseccional: Raza y Género (\textit{race\_sex}) & 0.4396 & 0.2199 & 0.4877 & 0.2209 \\
+Interseccional: Raza y Edad (\textit{race\_age}) & 0.5508 & 0.4534 & 0.5215 & 0.4295 \\
+\hline
+\end{tabular}
+}
+\end{table}
+
+Para facilitar la interpretación de estos indicadores agregados, la dinámica de contracción de la injusticia se ha mapeado visualmente en un diagrama de contracción de brechas globales (ver Figura~\ref{fig:reduccion_gaps_global}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{Images/comparativa_global_equalized_odds.png}
+\caption{Efecto del algoritmo de mitigación In-processing en la contracción de las brechas de Equalized Odds a través de las dimensiones demográficas directas e interseccionales.}
+\label{fig:reduccion_gaps_global}
+\end{figure}
+
+El desglose forense de la Tabla~\ref{tab:resumen_gaps} y su proyección en la Figura~\ref{fig:reduccion_gaps_global} permiten validar el tremendo éxito ético de la optimización restringida implementada:
+\begin{enumerate}
+    \item \textbf{Aplanamiento Radical del Sesgo Racial Directo:} La dimensión primaria gobernada por el optimizador restringido (\textit{race}) exhibió un colapso sin precedentes en sus métricas de disparidad. El \textit{Equalized Odds Gap} cayó drásticamente desde un injustificable $0.2812$ hasta un residual $0.0890$, lo que representa una remoción neta del sesgo por tasas de error del \textbf{68.35\%}. De manera paralela, el \textit{Demographic Parity Gap} (la diferencia en la asignación bruta de etiquetas de alto riesgo) se contrajo un \textbf{70.23\%}, pasando de $0.2869$ a solo $0.0854$.
+    
+    \item \textbf{Desarticulación de Sesgos Interseccionales Ocultos:} El hallazgo con mayor peso científico del experimento reside en el impacto sobre los subgrupos cruzados. En el modelo base, la combinación de raza y género (\textit{race\_sex}) arrojaba un severo gap de probabilidades de $0.4877$. Tras la mitigación guiada por el Tradeoff Score, esta brecha interseccional se redujo a más de la mitad, alcanzando un competitivo $0.2209$. Asimismo, la brecha acumulativa del colectivo afroamericano joven menor de 25 años (\textit{race\_age}) se comprimió de $0.5215$ a $0.4295$. Como ilustran los vectores de la Figura~\ref{fig:reduccion_gaps_global}, intervenir sobre la raíz de la proxy de raza actúa como un mecanismo de arrastre que disuelve la discriminación indirecta camuflada en subgrupos complejos.
+    
+    \item \textbf{Garantía del Teorema de Imposibilidad de Kleinberg:} La persistencia de pequeñas brechas remanentes (gaps que no llegan a ser exactamente $0.00$) no responde a una ineficiencia del algoritmo, sino a una restricción matemática fundamental. El \textit{Teorema de Imposibilidad de la Equidad Algorítmica} demuestra que al existir tasas base de criminalidad histórica marcadamente distintas en la muestra de COMPAS por motivos estructurales, es matemáticamente imposible lograr la paridad demográfica pura y la igualdad de tasas de error condicionales de forma simultánea. El umbral óptimo hallado mediante la rejilla ($\epsilon=0.02$) opera en la frontera asintótica de lo que la matemática permite reconciliar.
+\end{enumerate}
+
+Para constatar el impacto real de este reajuste ético sobre la métrica más polémica del caso COMPAS original, la Figura~\ref{fig:auditoria_fpr_etnia} expone el comportamiento detallado de la Tasa de Falsos Positivos (FPR) desglosada por colectivo étnico.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{Images/auditoria_fpr_etnia.png}
+\caption{Auditoría forense de la Tasa de Falsos Positivos (FPR) desglosada por etnia. Se observa cómo el modelo base duplica el error de castigo injusto contra el colectivo afroamericano frente al caucásico, y cómo el mitigador equilibra operativamente dicha distribución.}
+\label{fig:auditoria_fpr_etnia}
+\end{figure}
+
+El examen empírico de la Figura~\ref{fig:auditoria_fpr_etnia} escenifica el beneficio social inmediato de la optimización restringida. En el modelo XGBoost base, el algoritmo replicaba el sesgo sistémico tradicional, asignando una tasa de falsos positivos desproporcionada al colectivo afroamericano (penalizando con perfiles de alto riesgo a ciudadanos inocentes que en la realidad no reincidieron) en comparación con el subgrupo caucásico. 
+
+Bajo las directrices del mitigador óptimo configurado a través del Grid Search, las barras correspondientes a la Figura~\ref{fig:auditoria_fpr_etnia} plasman un aplanamiento de los errores distributivos: la tasa de castigo erróneo de la minoría afroamericana se comprime de forma sustancial, atrayendo los valores de todos los colectivos hacia la línea de la media global del sistema. Esta descompresión operativa dota al modelo final de la solvencia técnica y ética exigida por la normativa comunitaria (*AI Act*) de la Unión Europea para algoritmos de alto riesgo en el ámbito judicial, garantizando una evaluación del riesgo de reincidencia desprovista de distorsiones históricas e injusticias estructurales.
+
+
+\subsubsection{Resultados de Explicabilidad del Modelo mediante SHAP y LIME}
+
+Una vez evaluada la equidad del modelo, se analizó su comportamiento interno mediante técnicas de explicabilidad. El objetivo de este apartado no es modificar las predicciones, sino estudiar qué variables influyen más en ellas y comprobar si las decisiones del modelo pueden interpretarse de forma razonable.
+
+En primer lugar, se aplicó SHAP a nivel global sobre el conjunto de prueba. La Figura~\ref{fig:shap_summary_global} muestra las variables con mayor impacto medio en la predicción del modelo.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{Images/shap_summary_global.png}
+\caption{Resumen global SHAP del modelo XGBoost.}
+\label{fig:shap_summary_global}
+\end{figure}
+
+En la Figura~\ref{fig:shap_summary_global} se observa que el modelo concentra gran parte de su decisión en dos variables principales: \texttt{priors\_count} y \texttt{age}. Esto indica que el número de antecedentes previos y la edad son los factores que más condicionan la predicción de reincidencia. En general, un mayor número de antecedentes empuja la predicción hacia la clase positiva, mientras que una edad más alta tiende a reducir el riesgo estimado.
+
+También aparecen variables como \texttt{c\_charge\_degree\_F}, \texttt{sex\_Female}, \texttt{juv\_other\_count} y algunas variables relacionadas con la raza. Aunque su impacto es menor que el de \texttt{priors\_count} y \texttt{age}, su presencia es relevante porque permite comprobar si el modelo está utilizando información demográfica o variables sensibles como parte de su razonamiento.
+
+Para completar el análisis, se seleccionó un individuo concreto del conjunto de prueba. El caso elegido corresponde al índice interno 1505, clasificado como falso positivo: el individuo realmente no reincidió, pero el modelo predijo reincidencia con una probabilidad de 0,591. La Tabla~\ref{tab:caso_xai} resume sus características principales.
+
+\begin{table}[H]
+\centering
+\caption{Perfil del individuo seleccionado para el análisis local.}
+\label{tab:caso_xai}
+\begin{tabular}{l c}
+\hline
+\textbf{Atributo} & \textbf{Valor} \\
+\hline
+Índice interno & 1505 \\
+Índice original & 4156 \\
+Tipo de caso & Falso positivo \\
+Clase real & 0 \\
+Predicción del modelo & 1 \\
+Probabilidad estimada de reincidencia & 0,591 \\
+Raza & African-American \\
+Sexo & Male \\
+Edad & 20 \\
+Antecedentes previos & 0 \\
+Delitos juveniles graves & 0 \\
+Delitos juveniles menores & 0 \\
+Otros delitos juveniles & 0 \\
+Grado del cargo & F \\
+\hline
+\end{tabular}
+\end{table}
+
+Este caso resulta especialmente interesante porque el modelo asigna riesgo de reincidencia a una persona que finalmente no reincidió. Además, se trata de un individuo afroamericano, joven y sin antecedentes previos registrados. Por tanto, permite analizar si la decisión del modelo se apoya en factores claramente justificables o si aparecen señales más problemáticas.
+
+La Figura~\ref{fig:shap_local_waterfall_idx1505} muestra la explicación local mediante SHAP. El gráfico parte del valor base del modelo y muestra cómo cada variable aumenta o reduce la predicción final.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{Images/shap_local_waterfall_idx1505.png}
+\caption{Explicación local SHAP para el individuo 1505.}
+\label{fig:shap_local_waterfall_idx1505}
+\end{figure}
+
+En este caso, la variable \texttt{age} es la que más empuja la predicción hacia la reincidencia. Esto significa que el modelo interpreta la baja edad del individuo como una señal de mayor riesgo. En cambio, \texttt{priors\_count} reduce la predicción, ya que el individuo no tiene antecedentes previos. Sin embargo, ese efecto protector no es suficiente para evitar que la predicción final supere el umbral de clasificación positiva.
+
+Este resultado es importante porque muestra que el falso positivo no se debe a un historial delictivo adulto previo, sino principalmente al peso que el modelo da a la juventud del individuo y a otros factores secundarios. En un contexto judicial, esta explicación sería necesaria para entender por qué una persona sin antecedentes acaba siendo clasificada como perfil de riesgo.
+
+Como contraste, se aplicó LIME sobre el mismo individuo. La Figura~\ref{fig:lime_local_idx1505} muestra las variables y reglas locales que más influyen en la predicción.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{Images/lime_local_idx1505.png}
+\caption{Explicación local LIME para el individuo 1505.}
+\label{fig:lime_local_idx1505}
+\end{figure}
+
+La explicación obtenida con LIME coincide en parte con SHAP, ya que vuelve a destacar la edad como uno de los factores principales. No obstante, LIME resulta algo menos claro en este caso, porque trabaja con variables transformadas y genera reglas locales que no siempre son tan directas de interpretar. Por tanto, SHAP ofrece una explicación más visual y más sencilla de relacionar con las variables originales del problema.
+
+Después del análisis local, se estudiaron varias dependencias mediante SHAP. La Figura~\ref{fig:shap_dependence_priors_age} muestra la relación entre \texttt{priors\_count} y su contribución a la predicción, usando la edad como variable de color.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_priors_age.png}
+\caption{Dependencia SHAP de \texttt{priors\_count} con interacción de \texttt{age}.}
+\label{fig:shap_dependence_priors_age}
+\end{figure}
+
+Se observa una relación positiva clara: cuando aumenta el número de antecedentes previos, también aumenta la contribución SHAP hacia la reincidencia. En los valores bajos, la variable aporta poco o incluso reduce el riesgo estimado. En cambio, a partir de varios antecedentes, su efecto pasa a ser claramente positivo.
+
+La Figura~\ref{fig:shap_dependence_race_priors} analiza la variable \texttt{race\_African-American}, coloreada por \texttt{priors\_count}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_race_priors.png}
+\caption{Dependencia SHAP de \texttt{race\_African-American} con interacción de \texttt{priors\_count}.}
+\label{fig:shap_dependence_race_priors}
+\end{figure}
+
+La contribución directa de la variable racial es menor que la de los antecedentes o la edad, pero no es completamente nula. Los individuos codificados como afroamericanos tienden a presentar una contribución ligeramente positiva, mientras que en el resto de grupos suele ser menor o negativa. Este resultado no demuestra por sí solo discriminación directa, pero sí justifica que la raza se mantenga como variable a vigilar dentro de la auditoría del modelo.
+
+La Figura~\ref{fig:shap_dependence_age_priors} muestra el comportamiento de la edad, coloreada por \texttt{priors\_count}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_age_priors.png}
+\caption{Dependencia SHAP de \texttt{age} con interacción de \texttt{priors\_count}.}
+\label{fig:shap_dependence_age_priors}
+\end{figure}
+
+En este caso, la relación es negativa. Los individuos más jóvenes presentan valores SHAP positivos, por lo que la edad aumenta el riesgo estimado. A medida que la edad crece, la contribución se vuelve negativa y reduce la predicción de reincidencia. Este patrón ayuda a entender el caso local anterior, ya que el individuo 1505 tiene solo 20 años y esa característica tiene un peso importante en su clasificación.
+
+Por último, la Figura~\ref{fig:shap_dependence_sex_priors} muestra la variable \texttt{sex\_Female}, también coloreada por \texttt{priors\_count}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{Images/shap_dependence_sex_priors.png}
+\caption{Dependencia SHAP de \texttt{sex\_Female} con interacción de \texttt{priors\_count}.}
+\label{fig:shap_dependence_sex_priors}
+\end{figure}
+
+Cuando \texttt{sex\_Female} toma valor 1, la contribución SHAP tiende a ser negativa. Esto indica que el modelo asocia la categoría femenina con una reducción del riesgo estimado. En cambio, cuando la variable toma valor 0, la contribución suele ser ligeramente positiva. Aunque su efecto es menor que el de \texttt{priors\_count} y \texttt{age}, muestra que el modelo también incorpora diferencias demográficas en sus predicciones.
+
+En conjunto, los resultados de explicabilidad muestran que el modelo basa sus decisiones principalmente en variables coherentes con el problema, como los antecedentes previos y la edad. Sin embargo, también aparecen contribuciones asociadas a variables demográficas y sensibles, por lo que la interpretación del modelo debe hacerse junto con las métricas de equidad. De este modo, SHAP y LIME no sustituyen al análisis de fairness, pero ayudan a entender cómo se construyen las predicciones y por qué ciertos casos pueden resultar problemáticos.
+
+
+\newpage
+
+
+% ============================================================
+\section{Discusión}
+\label{sec:discusion}
+% ============================================================
+
+\subsection{Interpretación de los resultados}
+
+La lectura conjunta de los resultados obtenidos permite trasladar las cifras del experimento al plano del problema real: la evaluación automatizada del riesgo de reincidencia en el sistema judicial penal. El primer hallazgo relevante es que, en el contexto del \textit{dataset} COMPAS, ninguna de las cinco familias algorítmicas exploradas alcanza un poder predictivo verdaderamente alto. El AUC-ROC máximo observado (XGBoost, $0.7406$) y la cercanía de los demás candidatos (Random Forest $0.7370$, SVM $0.7315$ e incluso Regresión Logística $0.7305$) sugieren que el techo predictivo no está limitado por la sofisticación del modelo, sino por la propia señal estadística contenida en los datos. En términos prácticos, esto significa que aproximadamente uno de cada tres individuos sería clasificado de forma incorrecta por cualquier sistema basado en estas variables, independientemente del algoritmo escogido. Para una persona evaluada en un juzgado de Broward, esa cifra deja de ser un detalle metodológico y pasa a representar un riesgo material de privación injustificada de libertad.
+
+El segundo hallazgo es que la mitigación \textit{in-processing} mediante Reducción de Gradiente Exponencial logra reconducir la dimensión ética del sistema sin destruir su utilidad operativa. La compresión de la brecha racial de \textit{Equalized Odds} en un $68.35\%$ (de $0.2812$ a $0.0890$) frente a una caída controlada de la exactitud del $1.68\%$ ($0.6971 \to 0.6803$) es indicativa de que la disparidad observada en el modelo base no era una consecuencia inevitable del aprendizaje, sino un artefacto absorbido por el optimizador no restringido. Particularmente significativo es el efecto cruzado sobre subgrupos interseccionales no incluidos explícitamente en la restricción: la brecha \textit{race--sex} se reduce de $0.4877$ a $0.2209$ y la \textit{race--age} de $0.5215$ a $0.4295$, lo que sugiere que parte del sesgo demográfico estaba operando a través de variables \textit{proxy} (principalmente \texttt{priors\_count} y \texttt{age}) y que la intervención sobre la raíz racial arrastra parcialmente esas correlaciones latentes. No obstante, la persistencia de brechas residuales en las dimensiones \textit{sex}, \textit{age\_group} y especialmente \textit{race\_age} indica que una intervención unidimensional no agota el espacio de discriminación posible.
+
+El tercer hallazgo procede del análisis XAI. SHAP confirma que el clasificador concentra la mayor parte de su capacidad explicativa en variables coherentes con el dominio (\texttt{priors\_count} y \texttt{age}), pero también permite documentar casos donde esa lógica produce resultados problemáticos. El individuo 1505 (afroamericano, 20 años, sin antecedentes) es clasificado como reincidente con probabilidad $0.591$ fundamentalmente porque el modelo trata la juventud como factor de riesgo. Este patrón, lejos de ser anecdótico, ilustra el tipo de razonamiento estadístico que un juez no podría justificar verbalmente ante un acusado: la decisión no se apoya en hechos del historial del individuo, sino en una regularidad poblacional sobre cómo se comportan, en agregado, las personas de su edad.
+
+\subsection{Limitaciones}
+
+Las conclusiones anteriores deben leerse a la luz de varias limitaciones no triviales que acotan su alcance.
+
+\paragraph{Limitaciones del \textit{dataset}.} COMPAS recoge únicamente registros del condado de Broward (Florida, 2013--2014) y la etiqueta \texttt{two\_year\_recid} no mide reincidencia real, sino \emph{rearresto} dentro de una ventana de dos años. Dado que las tasas de policiamiento no son homogéneas entre grupos raciales, la propia variable objetivo arrastra el sesgo del sistema que genera los datos: un modelo entrenado para predecir rearrestos aprende patrones de vigilancia tanto como patrones de comportamiento delictivo. Asimismo, la eliminación por lista de los registros con valores ausentes (de $7\,214$ a $6\,167$ instancias) puede haber introducido un sesgo de selección no auditado.
+
+\paragraph{Limitaciones del modelo base.} El AUC-ROC alcanzado ($0.7406$) es modesto en términos absolutos, lo que limita la confianza individual de cualquier predicción. Adicionalmente, el conjunto de variables disponibles es reducido (13 \textit{features}) y omite información contextual (socioeconómica, educativa, de salud mental) que la literatura criminológica considera predictiva. Las conclusiones sobre la importancia relativa de variables como \texttt{age} o \texttt{priors\_count} están condicionadas por esta ausencia.
+
+\paragraph{Limitaciones de la mitigación.} El algoritmo de Gradiente Exponencial se ha aplicado sobre el atributo sensible \textit{race} de forma unidimensional. Aunque arrastra parcialmente las brechas interseccionales, no las elimina y las dimensiones \textit{age\_group} y \textit{race\_age} retienen disparidades sustanciales tras la intervención. Por otro lado, el \textit{Equalized Odds Gap} no se reduce a cero, lo que es coherente con los resultados de imposibilidad de Kleinberg, Chouldechova y otros: con tasas base distintas entre grupos, ningún clasificador puede satisfacer simultáneamente paridad demográfica, calibración y equiparación de tasas de error. La elección de \textit{Equalized Odds} como criterio implica, por tanto, renunciar deliberadamente a otras nociones de justicia algorítmica.
+
+\paragraph{Limitaciones de la explicabilidad.} Las atribuciones SHAP asumen independencia condicional entre características, supuesto que se vulnera en este \textit{dataset} (por ejemplo, \texttt{priors\_count} y \texttt{age} están correlacionadas con la raza). Esto puede reasignar contribuciones entre variables genuinas y \textit{proxies}, suavizando aparentemente la importancia de los atributos sensibles. LIME, por su parte, depende de un muestreo aleatorio del vecindario del punto explicado, lo que introduce variabilidad estocástica en las explicaciones locales. Las conclusiones individuales (como el análisis del individuo 1505) deben entenderse como evidencia ilustrativa, no como una auditoría exhaustiva.
+
+\paragraph{Limitaciones de validación externa.} Toda la evaluación se ha realizado sobre el mismo \textit{dataset} de origen y con una única partición \textit{train/test} estratificada. No se ha llevado a cabo validación temporal ni transferencia a otras jurisdicciones, por lo que los resultados no garantizan generalización fuera del contexto de Broward.
+
+\subsection{Implicaciones éticas, legales y sociales}
+
+Las cifras obtenidas tienen consecuencias específicas para los grupos afectados por este tipo de sistema y se enmarcan en obligaciones legales concretas del entorno europeo.
+
+\paragraph{Efecto desigual sobre colectivos vulnerables.} En el modelo base, la tasa de falsos positivos sobre el colectivo afroamericano duplica aproximadamente la del colectivo caucásico (Figura~\ref{fig:auditoria_fpr_etnia}). Traducido al impacto social, esto implica que el sistema, sin intervención, etiquetaría como ''alto riesgo'' a ciudadanos inocentes de la minoría racial con una probabilidad significativamente mayor que a ciudadanos inocentes de la mayoría, replicando el patrón documentado por ProPublica. La mitigación aplicada no resuelve por completo esta disparidad (persisten brechas residuales y, especialmente, los individuos jóvenes afroamericanos siguen siendo el subgrupo peor servido por el modelo), pero sí desplaza el sistema desde una situación claramente discriminatoria hacia una región operativa donde la disparidad es de orden comparable al ruido estadístico del clasificador.
+
+\paragraph{Encaje en el AI Act.} Los sistemas de predicción de riesgo individual en justicia penal están explícitamente catalogados como de \textbf{alto riesgo} en el Anexo III del Reglamento (UE) 2024/1689 (AI Act). Esta clasificación impone obligaciones materiales: sistema de gestión de riesgos (Art. 9), gobernanza de datos y mitigación de sesgos (Art. 10), trazabilidad y documentación técnica (Arts. 11--12), supervisión humana significativa (Art. 14) y robustez/precisión adecuadas a la finalidad (Art. 15). Los elementos producidos en este trabajo (protocolo reproducible de preprocesamiento, comparación documentada de candidatos, auditoría multidimensional de equidad, mitigación restringida con \textit{trade-off score} justificado y explicaciones locales SHAP/LIME) cubren parcialmente estos requisitos, pero no eximen al despliegue real de un sistema de gestión continua del riesgo. En particular, el Art. 14 exige que la supervisión humana sea \emph{efectiva}, lo que implica que las explicaciones generadas deban ser comprensibles para el operador judicial; el ejemplo del individuo 1505 muestra que esta interpretabilidad técnica no equivale automáticamente a justificabilidad jurídica.
+
+\paragraph{Encaje en el RGPD.} El Art. 22 del Reglamento (UE) 2016/679 prohíbe las decisiones basadas únicamente en tratamiento automatizado que produzcan efectos jurídicos significativos sobre el interesado, salvo excepciones tasadas, e impone el derecho a obtener intervención humana y a impugnar la decisión. Por tanto, incluso un sistema técnicamente equitativo como el mitigado en este trabajo no puede sustituir el criterio judicial, sino únicamente informarlo. Adicionalmente, el tratamiento de la variable \textit{race} como atributo sensible cae dentro del Art. 9 (categorías especiales de datos), lo que exige una base jurídica reforzada para su uso, incluso cuando dicho uso, como en este trabajo, persigue precisamente medir y reducir la discriminación.
+
+\paragraph{Implicaciones sociales.} Más allá del cumplimiento normativo, los resultados invitan a una reflexión sobre el coste de oportunidad de desplegar sistemas de este tipo. Un AUC-ROC de $0.74$ implica que el sistema funciona razonablemente mejor que el azar, pero está lejos de ofrecer certezas individuales. Trasladar esa incertidumbre a decisiones sobre libertad provisional o régimen penitenciario requiere un marco institucional que asuma explícitamente dicho margen de error y que articule mecanismos efectivos de reparación cuando este se materialice. En ausencia de ese marco, la sofisticación técnica del sistema, incluso tras la mitigación, corre el riesgo de transferir responsabilidad desde un decisor humano identificable hacia un proceso estadístico opaco para la persona afectada.
+
+
+
+
+
+
+
+
+
+
+
+
+
+% ============================================================
+\section{Conclusiones}
+\label{sec:conclusiones}
+% ============================================================
+
+
+En este trabajo hemos abordado la predicción de reincidencia criminal sobre el dataset COMPAS desde una perspectiva técnica y ética. El objetivo no ha sido únicamente construir un modelo capaz de predecir la reincidencia, sino analizar si sus decisiones podían considerarse justas e interpretables en un contexto judicial. Para ello, hemos partido de un pipeline reproducible de preprocesamiento y hemos seleccionado XGBoost como modelo baseline, ya que ofrecía el mejor rendimiento entre los modelos evaluados. A partir de este punto, el trabajo se ha centrado en estudiar dos aspectos fundamentales: la equidad algorítmica y la explicabilidad del modelo.
+
+\vspace{0.3cm}
+
+En relación con la equidad, los resultados han mostrado que mejorar la justicia del modelo implica asumir un cierto compromiso con el rendimiento predictivo. Al aplicar la mitigación mediante \textit{Exponentiated Gradient} bajo la restricción de \textit{Equalized Odds}, hemos conseguido reducir de forma notable la brecha de disparidad racial, especialmente en términos de errores entre grupos. Esta mejora no ha sido gratuita, ya que la accuracy y el recall han disminuido ligeramente. Sin embargo, la pérdida ha sido moderada frente a la reducción obtenida en las métricas de fairness, por lo que el modelo mitigado representa un equilibrio más adecuado para un entorno de alto impacto como el judicial.
+
+\vspace{0.3cm}
+
+Por otro lado, el análisis de explicabilidad ha permitido entender mejor cómo se construyen las predicciones del modelo. A nivel global, SHAP ha mostrado que las variables más influyentes son \texttt{priors\_count} y \texttt{age}, lo cual resulta coherente con el problema, ya que los antecedentes previos y la edad están directamente relacionados con el riesgo de reincidencia. A nivel local, el estudio del individuo 1505 ha sido especialmente útil, al tratarse de un falso positivo: una persona que no reincidió, pero fue clasificada como reincidente. En este caso, SHAP y LIME han permitido observar que la juventud del individuo tuvo un peso importante en la predicción, incluso cuando no presentaba antecedentes previos.
+
+\vspace{0.3cm}
+
+Como líneas futuras, resulta necesario avanzar hacia sistemas de decisión automatizada que no solo busquen mejorar la precisión, sino también garantizar un trato más justo y transparente para todos los individuos. A medida que estas herramientas se utilicen con más frecuencia en ámbitos sensibles, será cada vez más importante automatizar también los procesos de auditoría, incorporando controles de fairness y explicabilidad desde el propio ciclo de desarrollo del modelo. En este sentido, el futuro de estos sistemas no debería centrarse únicamente en predecir mejor, sino en construir modelos capaces de justificar sus decisiones, detectar posibles desigualdades y reducir el riesgo de reproducir sesgos históricos.
+
+\newpage
+
+
+
+
+
+
+
+
+
+
+
+
+% ============================================================
+%  REFERENCIAS
+% ============================================================
+
+\begin{thebibliography}{99}
+
+\bibitem{travaini2022machine}
+G. V. Travaini, F. Pacchioni, S. Bellumore, M. Bosia y F. De Micco,
+``Machine Learning and Criminal Justice: A Systematic Review of Advanced Methodology for Recidivism Risk Prediction,''
+\textit{International Journal of Environmental Research and Public Health},
+vol.~19, núm.~17, p.~10594, 2022.
+\href{https://doi.org/10.3390/ijerph191710594}{DOI:10.3390/ijerph191710594}
+
+\bibitem{angwin2016machine}
+J. Angwin, J. Larson, S. Mattu y L. Kirchner,
+``Machine Bias,''
+\textit{ProPublica}, 2016.
+\href{https://www.propublica.org/article/machine-bias-risk-assessments-in-criminal-sentencing}{URL: propublica.org/machine-bias}
+
+\bibitem{karimi2021enhancing}
+M. Karimi-Haghighi y C. Castillo,
+``Enhancing a recidivism prediction tool with machine learning: Effectiveness and algorithmic fairness,''
+in \textit{Proc. 18th International Conference on Artificial Intelligence and Law (ICAIL)},
+São Paulo, Brasil, 2021, pp.~79--88.
+\href{https://doi.org/10.1145/3462757.3466144}{DOI:10.1145/3462757.3466144}
+
+\bibitem{duwe2017out}
+G. Duwe y K. Kim,
+``Out with the Old and in with the New? An Empirical Comparison of Supervised Learning Algorithms to Predict Recidivism,''
+\textit{Criminal Justice Policy Review},
+vol.~28, núm.~6, pp.~570--600, 2017.
+\href{https://doi.org/10.1177/0887403415604899}{DOI:10.1177/0887403415604899}
+
+\bibitem{gunning2019darpa}
+D. Gunning y D. W. Aha,
+``DARPA’s explainable artificial intelligence program,''
+\textit{AI Magazine},
+vol.~40, núm.~2, pp.~44--58, 2019.
+\href{https://doi.org/10.1609/aimag.v40i2.2850}{DOI:10.1609/aimag.v40i2.2850}
+
+\bibitem{chouldechova2017fair}
+A. Chouldechova,
+``Fair prediction with disparate impact: A study of bias in recidivism prediction instruments,''
+\textit{Big Data},
+vol.~5, núm.~2, pp.~153--163, 2017. 
+\href{https://doi.org/10.1089/big.2016.0047}{DOI:10.1089/big.2016.0047}
+
+\bibitem{singh2021development}
+A. Singh y S. Mohapatra,
+``Development of risk assessment framework for first time offenders using ensemble learning,''
+\textit{IEEE Access},
+vol.~9, pp.~135024--135033, 2021.
+
+\bibitem{butsara2019predicting}
+N. Butsara, P. Athonthitichot y P. Jodpimai,
+``Predicting recidivism to drug distribution using machine learning techniques,''
+in \textit{Proc. 17th Int. Conf. on ICT and Knowledge Engineering},
+Bangkok, Tailandia, 2019, pp.~1--5.
+
+\bibitem{tollenaar2013method}
+N. Tollenaar y P. G. M. van der Heijden,
+``Which method predicts recidivism best?: A comparison of statistical, machine learning and data mining predictive models,''
+\textit{J. R. Stat. Soc. Ser. A Stat. Soc.},
+vol.~176, pp.~565--584, 2013.
+
+\bibitem{salo2019predictive}
+B. Salo, T. Laaksonen y P. Santtila,
+``Predictive Power of Dynamic (vs. Static) Risk Factors in the Finnish Risk and Needs Assessment Form,''
+\textit{Crim. Justice Behav.},
+vol.~46, pp.~939--960, 2019.
+
+\bibitem{arrieta2020explainable}
+A. B. Arrieta, N. Díaz-Rodríguez, J. Del Ser et al.,
+``Explainable Artificial Intelligence (XAI): Concepts, taxonomies, opportunities and challenges,''
+\textit{Information Fusion},
+vol.~58, pp.~82--115, 2020.
+\href{https://doi.org/10.1016/j.inffus.2019.12.012}{DOI:10.1016/j.inffus.2019.12.012}
+
+\bibitem{aas2021explaining}
+K. Aas, M. Jullum y A. Løland,
+``Explaining individual predictions when features are dependent: More accurate approximations to Shapley values,''
+\textit{Artificial Intelligence},
+vol.~298, p.~103502, 2021.
+\href{https://doi.org/10.1016/j.artint.2021.103502}{DOI:10.1016/j.artint.2021.103502}
+
+\end{thebibliography}
+
+% ============================================================
+%  ANEXOS (opcionales)
+% ============================================================
+\newpage
+\appendix
+
+\section{Contribución individual}
+
+\begin{table}[H]
+\centering
+\caption{Contribución detallada de cada miembro del grupo.}
+\small
+\begin{tabular}{@{}lp{11cm}@{}}
+\toprule
+\textbf{Miembro} & \textbf{Contribución principal} \\
+\midrule
+Carlos Vidal Rodríguez & Implementación y tratamiento de la problemática 2, Conclusiones. Sección~4.4, 4.5.1, 5.3.2, 7.\\ [4pt]
+David Martínez Gómez   & Implementación y tratamiento de la problemática 1, Trabajo relacionado. Sección~2, 4.3, 5.3.1. \\ [4pt]
+Pau Mateo Lillo        & Descripción del problema y los datos: EDA, Preprocesamiento de datos, Modelo baseline. Sección~3, 4.1, 4.2, 4.5. \\ [4pt]
+Stanislav Gatin        & Modelo baseline, Experimentos y resultados, Discusion. Sección~4.2, 5.1, 5.2, 6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Enlace al repositorio}
+
+El código fuente del trabajo está disponible en:
+\url{https://github.com/dmg131/AA_proyect}
+
+\section{Uso de herramientas de IA generativa}
+
+Durante la elaboración de este trabajo hemos utilizado ChatGPT, Gemini y Claude como herramientas de apoyo. Las hemos usado principalmente para tres cosas: generar y corregir algunos fragmentos de código, buscar y organizar información relacionada con el tema, y mejorar la redacción de la memoria para que el texto quedara más claro, expresivo y con un carácter más científico.
+
+En el caso del código, no todo ha sido generado con IA. Las partes en las que nos hemos apoyado en estas herramientas han sido revisadas, adaptadas y comprobadas por el grupo antes de incluirlas en el proyecto.
+
+\end{document}
